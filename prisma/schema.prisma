@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+}
+
+model Client {
+  id          String              @id @default(cuid())
+  clinicianId String
+  displayName String
+  email       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  sessions    AssessmentSession[]
+
+  @@index([clinicianId])
+}
+
+model AssessmentSession {
+  id                String        @id @default(cuid())
+  token             String        @unique
+  clinicianId       String?
+  clientId          String?
+  client            Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  status            SessionStatus @default(DRAFT)
+  clientName        String?
+  answers           Json
+  overrides         Json?
+  clinicianNotes    String?
+  reportDraft       String?
+  reportFinal       String?
+  reportGeneratedAt DateTime?
+  reportFinalizedAt DateTime?
+  consentAcceptedAt DateTime?
+  tokenExpiresAt    DateTime?
+  revokedAt         DateTime?
+  notifiedAt        DateTime?
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  events            SessionEvent[]
+
+  @@index([clinicianId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model SessionEvent {
+  id        String            @id @default(cuid())
+  sessionId String
+  session   AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  actorType String
+  actorId   String?
+  action    String
+  metadata  Json?
+  createdAt DateTime          @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
