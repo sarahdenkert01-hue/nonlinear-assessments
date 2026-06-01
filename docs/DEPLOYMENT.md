@@ -9,11 +9,13 @@ The app uses **PostgreSQL** (`prisma/schema.prisma`).
    - Do **not** use `db.*.supabase.co` on Vercel (`P1001`).
    - Do **not** use the **Transaction** pooler (port **6543**) for `DATABASE_URL` — `prisma migrate deploy` can hang with no further log output.
 3. After sign-in, `/dashboard` queries Postgres — if env vars or migrations are wrong, you get a server error.
-4. Apply schema on deploy (`npm run build` runs `prisma migrate deploy`) or run locally once:
+4. Apply schema **before** deploy (not during the Vercel build — poolers cause `P1002` advisory lock timeouts):
 
 ```bash
-npx prisma migrate deploy
+npm run db:deploy
 ```
+
+Run that locally whenever you add migrations, then push and let Vercel run `npm run build` (generate + Next only).
 
 For a fresh project with no migrations yet, create the initial migration locally against your Postgres URL:
 
