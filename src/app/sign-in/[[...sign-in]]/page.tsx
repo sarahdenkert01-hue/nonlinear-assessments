@@ -1,9 +1,13 @@
 import { SignIn } from "@clerk/nextjs";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 py-16">
+    <AuthShell
+      title="Sign in"
+      subtitle="Access your dashboard to manage intake links and client reviews."
+    >
       <SignIn forceRedirectUrl="/dashboard" signUpUrl="/sign-up" />
-    </main>
+    </AuthShell>
   );
 }

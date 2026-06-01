@@ -35,35 +35,39 @@ export function ClientCreator() {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <label htmlFor="client-display" className="block text-sm font-medium text-gray-700">
+    <div className="ui-card p-5">
+      <label htmlFor="client-display" className="ui-label">
         Display name
       </label>
       <input
         id="client-display"
         value={displayName}
         onChange={(e) => setDisplayName(e.target.value)}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className="ui-input"
       />
-      <label htmlFor="client-email" className="mt-3 block text-sm font-medium text-gray-700">
-        Email (optional)
+      <label htmlFor="client-email" className="ui-label mt-4">
+        Email <span className="font-normal text-slate-400">(optional)</span>
       </label>
       <input
         id="client-email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className="ui-input"
       />
       <button
         type="button"
         onClick={handleCreate}
         disabled={loading || !displayName.trim()}
-        className="mt-4 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="ui-btn ui-btn-primary mt-5"
       >
         {loading ? "Creating…" : "Add client"}
       </button>
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

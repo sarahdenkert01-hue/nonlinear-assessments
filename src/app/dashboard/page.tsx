@@ -2,7 +2,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { EmptyState } from "@/components/empty-state";
 import { ClinicianHeader } from "@/components/clinician-header";
+import {
+  StatusBadge,
+  sessionStatusLabel,
+  sessionStatusVariant,
+} from "@/components/ui/status-badge";
 import {
   listSessionsForClinician,
   type DashboardFilter,
@@ -42,67 +48,78 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   });
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-      <ClinicianHeader title="Dashboard" />
+    <div className="min-h-screen bg-[var(--background)]">
+      <ClinicianHeader />
       <main className="mx-auto max-w-3xl px-6 py-10">
-        <section>
-          <h1 className="text-xl font-semibold text-gray-900">Assessments</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Create intake links for clients and review submitted questionnaires.
+        <header>
+          <h1 className="ui-page-title">Dashboard</h1>
+          <p className="ui-page-lead">
+            Create intake links and track client progress through review.
           </p>
-          <div className="mt-6">
+        </header>
+
+        <section className="mt-8">
+          <h2 className="ui-section-title">New intake</h2>
+          <div className="mt-3">
             <IntakeLinkCreator />
           </div>
         </section>
 
         <section className="mt-12">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">
-            Your sessions
-          </h2>
-          <Suspense fallback={<p className="mt-4 text-sm text-gray-500">Loading filters…</p>}>
+          <h2 className="ui-section-title">Sessions</h2>
+          <Suspense fallback={<p className="mt-4 text-sm text-slate-500">Loading…</p>}>
             <DashboardFilters currentFilter={filter} currentSearch={search} />
           </Suspense>
+
           {sessions.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-500">
-              {filter !== "all" || search
-                ? "No sessions match this filter."
-                : "No intake sessions yet."}
-            </p>
+            <EmptyState
+              title={filter !== "all" || search ? "No matches" : "No sessions yet"}
+              description={
+                filter !== "all" || search
+                  ? "Try a different filter or search term."
+                  : "Create an intake link above and send it to your client."
+              }
+            />
           ) : (
-            <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            <ul className="mt-4 space-y-2">
               {sessions.map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900">
-                      {s.clientName ?? "Unnamed client"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      <SessionStatusLabel session={s} />
-                      {s.submittedAt &&
-                        ` · Submitted ${new Date(s.submittedAt).toLocaleDateString()}`}
-                      {s.reportFinalizedAt && " · Report finalized"}
-                      {s.reportDraft && !s.reportFinalizedAt && " · Report drafted"}
-                      {s.revokedAt && " · Link revoked"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-3 text-sm">
-                    {!s.revokedAt && (
-                      <Link
-                        href={`/intake/${s.token}`}
-                        className="text-gray-500 hover:text-gray-800"
-                        target="_blank"
-                      >
-                        Intake
-                      </Link>
-                    )}
-                    {s.status !== "DRAFT" && (
-                      <Link
-                        href={`/cases/${s.id}/assessment`}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Review
-                      </Link>
-                    )}
+                <li key={s.id} className="ui-card transition-shadow hover:shadow-md">
+                  <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-slate-900">
+                          {s.clientName ?? "Unnamed client"}
+                        </p>
+                        <StatusBadge variant={sessionStatusVariant(s)}>
+                          {sessionStatusLabel(s)}
+                        </StatusBadge>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {s.submittedAt &&
+                          `Submitted ${new Date(s.submittedAt).toLocaleDateString()}`}
+                        {s.reportFinalizedAt && " · Report finalized"}
+                        {s.reportDraft && !s.reportFinalizedAt && " · Draft saved"}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      {!s.revokedAt && (
+                        <Link
+                          href={`/intake/${s.token}`}
+                          className="ui-btn ui-btn-secondary px-3 py-1.5 text-xs"
+                          target="_blank"
+                        >
+                          Intake link
+                        </Link>
+                      )}
+                      {s.status !== "DRAFT" && (
+                        <Link
+                          href={`/cases/${s.id}/assessment`}
+                          className="ui-btn ui-btn-primary px-3 py-1.5 text-xs"
+                        >
+                          Review
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -111,31 +128,5 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </section>
       </main>
     </div>
-  );
-}
-
-function SessionStatusLabel({
-  session,
-}: {
-  session: {
-    status: string;
-    consentAcceptedAt: string | null;
-    reportDraft: string | null;
-  };
-}) {
-  if (session.status === "REVIEWED") {
-    return <span className="text-green-700">Reviewed</span>;
-  }
-  if (session.status === "SUBMITTED") {
-    return (
-      <span className="text-blue-700">
-        {session.reportDraft ? "Report in progress" : "Ready to review"}
-      </span>
-    );
-  }
-  return (
-    <span>
-      {session.consentAcceptedAt ? "In progress" : "Awaiting client"}
-    </span>
   );
 }

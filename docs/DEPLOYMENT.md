@@ -4,8 +4,11 @@
 
 The app uses **PostgreSQL** (`prisma/schema.prisma`).
 
-1. Create a database (Neon, Supabase, RDS, etc.) and copy the connection string.
-2. Set `DATABASE_URL` in Vercel (and locally in `.env`).
+1. Create a database (Neon, Supabase, RDS, etc.).
+2. On **Supabase + Vercel**, set two URLs in Vercel (and locally):
+   - `DATABASE_URL` — **Transaction pooler** (port 6543, add `?pgbouncer=true`)
+   - `DIRECT_URL` — **Direct** connection (port 5432) for migrations
+3. After sign-in, `/dashboard` queries Postgres — if this URL is wrong or tables are missing, you get a server error.
 3. Apply schema on deploy (see Vercel build command below) or run locally once:
 
 ```bash

@@ -32,26 +32,29 @@ export function DashboardFilters({
   };
 
   return (
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => updateParams({ filter: f.value === "all" ? null : f.value })}
-            className={
-              currentFilter === f.value
-                ? "rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white"
-                : "rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:border-gray-300"
-            }
-          >
-            {f.label}
-          </button>
-        ))}
+    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter sessions">
+        {FILTERS.map((f) => {
+          const active = currentFilter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => updateParams({ filter: f.value === "all" ? null : f.value })}
+              className={
+                active
+                  ? "rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-medium text-[var(--accent-foreground)] shadow-sm"
+                  : "rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              }
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
       <input
         type="search"
-        placeholder="Search by client name…"
+        placeholder="Search clients…"
         defaultValue={currentSearch}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -64,7 +67,7 @@ export function DashboardFilters({
             updateParams({ q: next || null });
           }
         }}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm sm:max-w-xs"
+        className="ui-input sm:max-w-xs"
         aria-label="Search sessions by client name"
       />
     </div>

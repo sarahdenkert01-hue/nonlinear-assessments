@@ -119,9 +119,9 @@ function IntakeQuestionnaire({
 
   return (
     <div>
-      <div className="border-b border-gray-200 bg-white px-6 py-3">
-        <div className="mx-auto flex max-w-2xl items-center justify-between text-xs text-gray-500">
-          <span>Your progress is saved automatically</span>
+      <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-white/95 px-6 py-3 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-2xl items-center justify-between text-xs text-slate-500">
+          <span>Progress saves automatically</span>
           <SaveIndicator status={saveStatus} />
         </div>
       </div>

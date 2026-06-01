@@ -9,6 +9,11 @@ import {
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import type { AssessmentSessionRecord } from "@/lib/sessions";
+import {
+  StatusBadge,
+  sessionStatusLabel,
+  sessionStatusVariant,
+} from "@/components/ui/status-badge";
 import { SessionAuditLog } from "./session-audit-log";
 import { SessionLinkControls } from "./session-link-controls";
 
@@ -146,29 +151,23 @@ export function SessionAssessmentReview({
 
   return (
     <div>
-      <div className="border-b border-gray-100 bg-white px-6 py-2">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
-          <div className="flex flex-wrap items-center gap-4">
-            <span>
-              Status:{" "}
-              <strong className="text-gray-700">{session.status}</strong>
-            </span>
+      <div className="border-b border-[var(--border)] bg-white px-6 py-3">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <StatusBadge variant={sessionStatusVariant(session)}>
+              {sessionStatusLabel(session)}
+            </StatusBadge>
             {session.reviewedAt && (
-              <span>
-                Reviewed {new Date(session.reviewedAt).toLocaleDateString()}
-              </span>
+              <span>Reviewed {new Date(session.reviewedAt).toLocaleDateString()}</span>
             )}
             {reportFinalized && (
-              <span className="text-green-700">Report finalized</span>
+              <span className="font-medium text-emerald-700">Report finalized</span>
             )}
             <PersistIndicator status={persistStatus} />
             <SessionLinkControls session={session} onUpdate={setSession} />
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="text-gray-500 hover:text-gray-800"
-            >
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard" className="ui-btn ui-btn-ghost px-2 py-1 text-xs">
               ← Dashboard
             </Link>
             {session.status !== "REVIEWED" && (
@@ -176,7 +175,7 @@ export function SessionAssessmentReview({
                 type="button"
                 onClick={handleMarkReviewed}
                 disabled={markingReviewed}
-                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="ui-btn ui-btn-secondary px-3 py-1.5 text-xs"
               >
                 {markingReviewed ? "Saving…" : "Mark as reviewed"}
               </button>

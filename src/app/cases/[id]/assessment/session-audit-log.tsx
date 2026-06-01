@@ -35,25 +35,23 @@ export function SessionAuditLog({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   return (
-    <section className="border-t border-gray-200 bg-[#fafafa] px-6 py-8">
-      <div className="mx-auto max-w-3xl">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">
-          Activity log
-        </h2>
-        {loading && <p className="mt-3 text-sm text-gray-500">Loading…</p>}
+    <section className="border-t border-[var(--border)] bg-[var(--background)] px-6 py-10">
+      <div className="mx-auto max-w-5xl">
+        <h2 className="ui-section-title">Activity log</h2>
+        {loading && <p className="mt-3 text-sm text-slate-500">Loading…</p>}
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         {!loading && !error && events.length === 0 && (
-          <p className="mt-3 text-sm text-gray-500">No activity recorded yet.</p>
+          <p className="mt-3 text-sm text-slate-500">No activity recorded yet.</p>
         )}
         {!loading && events.length > 0 && (
           <ul className="mt-4 space-y-2">
             {events.map((e) => (
               <li
                 key={e.id}
-                className="flex items-baseline justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm"
+                className="ui-card flex items-baseline justify-between gap-4 px-4 py-2.5 text-sm"
               >
-                <span className="text-gray-800">{e.label}</span>
-                <time className="shrink-0 text-xs text-gray-500">
+                <span className="text-slate-800">{e.label}</span>
+                <time className="shrink-0 text-xs text-slate-500">
                   {new Date(e.createdAt).toLocaleString()}
                 </time>
               </li>

@@ -22,9 +22,11 @@ const MESSAGES: Record<IntakeAccessDenial, { title: string; body: string }> = {
 export function IntakeBlocked({ reason }: { reason: IntakeAccessDenial }) {
   const { title, body } = MESSAGES[reason];
   return (
-    <main className="mx-auto max-w-lg px-6 py-16 text-center">
-      <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-      <p className="mt-3 text-gray-600">{body}</p>
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-16">
+      <div className="ui-card p-8 text-center">
+        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">{body}</p>
+      </div>
     </main>
   );
 }

@@ -1,9 +1,13 @@
 import { SignUp } from "@clerk/nextjs";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function SignUpPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 py-16">
+    <AuthShell
+      title="Create account"
+      subtitle="Register as a clinician to create intake links and review assessments."
+    >
       <SignUp forceRedirectUrl="/dashboard" signInUrl="/sign-in" />
-    </main>
+    </AuthShell>
   );
 }
