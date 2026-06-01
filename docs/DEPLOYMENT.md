@@ -5,11 +5,11 @@
 The app uses **PostgreSQL** (`prisma/schema.prisma`).
 
 1. Create a database (Neon, Supabase, RDS, etc.).
-2. On **Supabase + Vercel**, set two URLs in Vercel (and locally):
-   - `DATABASE_URL` — **Transaction pooler** (port 6543, add `?pgbouncer=true`)
-   - `DIRECT_URL` — **Direct** connection (port 5432) for migrations
-3. After sign-in, `/dashboard` queries Postgres — if this URL is wrong or tables are missing, you get a server error.
-3. Apply schema on deploy (see Vercel build command below) or run locally once:
+2. On **Supabase + Vercel**, set one URL from **Connect → Session** (port **5432**, host `*.pooler.supabase.com`):
+   - Do **not** use `db.*.supabase.co` on Vercel (`P1001`).
+   - Do **not** use the **Transaction** pooler (port **6543**) for `DATABASE_URL` — `prisma migrate deploy` can hang with no further log output.
+3. After sign-in, `/dashboard` queries Postgres — if env vars or migrations are wrong, you get a server error.
+4. Apply schema on deploy (`npm run build` runs `prisma migrate deploy`) or run locally once:
 
 ```bash
 npx prisma migrate deploy
@@ -25,7 +25,7 @@ npx prisma migrate dev --name init
 
 | Variable | Required | Notes |
 |----------|----------|-------|
-| `DATABASE_URL` | Yes | PostgreSQL in production |
+| `DATABASE_URL` | Yes | Supabase **session** pooler (5432) on Vercel; one URL only |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk production instance |
 | `CLERK_SECRET_KEY` | Yes | |
 | `NEXT_PUBLIC_APP_URL` | Recommended | e.g. `https://app.example.com` — used in notification emails |
