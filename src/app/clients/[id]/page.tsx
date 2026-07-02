@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { ClinicianHeader } from "@/components/clinician-header";
-import { getClientForClinician, listSessionsForClient } from "@/lib/sessions";
+import { getClientForClinician, listSessionsForClient } from "@/lib/episodes";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -27,10 +27,10 @@ export default async function ClientDetailPage({ params }: PageProps) {
         {client.email && <p className="text-sm text-gray-600">{client.email}</p>}
 
         <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-gray-400">
-          Assessment sessions
+          Assessment episodes
         </h2>
         {sessions.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">No sessions linked yet.</p>
+          <p className="mt-4 text-sm text-gray-500">No episodes linked yet.</p>
         ) : (
           <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
             {sessions.map((s) => (

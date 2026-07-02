@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import type { DashboardFilter } from "@/lib/sessions";
+import type { DashboardFilter } from "@/lib/episodes";
 
 const FILTERS: { value: DashboardFilter; label: string }[] = [
   { value: "all", label: "All" },

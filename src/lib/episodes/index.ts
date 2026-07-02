@@ -4,7 +4,9 @@ export type {
   CreateClientInput,
   CreateSessionInput,
   DashboardFilter,
+  EpisodeRecord,
   ListSessionsQuery,
+  ModuleSummary,
   SessionStatus,
   UpdateSessionReviewInput,
 } from "./types";
@@ -18,6 +20,7 @@ export {
   getSessionForClinician,
   getSessionByToken,
   listClientsForClinician,
+  listModulesForEpisode,
   listSessionsForClinician,
   listSessionsForClient,
   markSessionNotified,

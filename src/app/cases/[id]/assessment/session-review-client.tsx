@@ -8,7 +8,7 @@ import {
 } from "@/features/assessments";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { parseApiResponse } from "@/lib/parse-api-response";
-import type { AssessmentSessionRecord } from "@/lib/sessions";
+import type { AssessmentSessionRecord } from "@/lib/episodes";
 import {
   StatusBadge,
   sessionStatusLabel,
@@ -38,7 +38,7 @@ export function SessionAssessmentReview({
       if (reportFinalized && (payload.overrides || payload.reportDraft)) return;
       setPersistStatus("saving");
       try {
-        const res = await fetch(`/api/sessions/${session.id}`, {
+        const res = await fetch(`/api/episodes/${session.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -101,7 +101,7 @@ export function SessionAssessmentReview({
     setMarkingReviewed(true);
     setPersistStatus("saving");
     try {
-      const res = await fetch(`/api/sessions/${session.id}`, {
+      const res = await fetch(`/api/episodes/${session.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "REVIEWED" }),
@@ -125,7 +125,7 @@ export function SessionAssessmentReview({
     if (!session.reportDraft?.trim()) return;
     setPersistStatus("saving");
     try {
-      const res = await fetch(`/api/sessions/${session.id}`, {
+      const res = await fetch(`/api/episodes/${session.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

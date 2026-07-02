@@ -3,19 +3,23 @@ import { prisma } from "@/lib/prisma";
 
 export type AuditActorType = "client" | "clinician" | "system";
 
+// Records an audited action against an episode. `episodeId` was previously the session id;
+// since episode ids are preserved from the old sessions, existing callers keep working.
 export async function logSessionEvent(
-  sessionId: string,
+  episodeId: string,
   action: string,
   options?: {
     actorType?: AuditActorType;
     actorId?: string | null;
+    moduleInstanceId?: string | null;
     metadata?: Record<string, unknown>;
   },
 ): Promise<void> {
   try {
-    await prisma.sessionEvent.create({
+    await prisma.auditEvent.create({
       data: {
-        sessionId,
+        episodeId,
+        moduleInstanceId: options?.moduleInstanceId ?? null,
         action,
         actorType: options?.actorType ?? "system",
         actorId: options?.actorId ?? null,
@@ -29,9 +33,9 @@ export async function logSessionEvent(
   }
 }
 
-export async function listSessionEvents(sessionId: string) {
-  return prisma.sessionEvent.findMany({
-    where: { sessionId },
+export async function listSessionEvents(episodeId: string) {
+  return prisma.auditEvent.findMany({
+    where: { episodeId },
     orderBy: { createdAt: "desc" },
     take: 100,
   });

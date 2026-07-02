@@ -1,6 +1,6 @@
 import { logSessionEvent } from "@/lib/audit";
-import type { AssessmentSessionRecord } from "@/lib/sessions";
-import { markSessionNotified } from "@/lib/sessions";
+import type { AssessmentSessionRecord } from "@/lib/episodes";
+import { markSessionNotified } from "@/lib/episodes";
 
 /**
  * Notify clinician when a client submits intake.

@@ -60,7 +60,7 @@ export async function requestSessionReport(
     profile?: "brief" | "standard" | "detailed";
   },
 ): Promise<AssessmentReportResult> {
-  return postReport(`/api/assessments/${sessionId}/report`, payload ?? {});
+  return postReport(`/api/episodes/${sessionId}/report`, payload ?? {});
 }
 
 export async function requestDevPreviewReport(input: {

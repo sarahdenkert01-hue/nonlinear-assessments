@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireClinicianId } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
-import { createClient, listClientsForClinician } from "@/lib/sessions";
+import { createClient, listClientsForClinician } from "@/lib/episodes";
 
 export async function GET() {
   try {

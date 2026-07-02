@@ -7,10 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Sprint 1 introduces the durable spine: Client -> AssessmentEpisode -> ModuleInstance -> Response.
+// The clinician workflow status (DRAFT/SUBMITTED/REVIEWED) still lives on the episode so the
+// existing dashboard/review/intake logic keeps working unchanged. A later sprint introduces the
+// richer episode lifecycle. For now every episode has exactly one Nonlinear screener module.
+
 enum SessionStatus {
   DRAFT
   SUBMITTED
   REVIEWED
+}
+
+enum ModuleAudience {
+  CLIENT
+  CLINICIAN
+}
+
+enum ModuleStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  COMPLETED
+}
+
+// Who caused an audited action. Kept as an enum so future AI/system actors are explicit.
+enum AuthorType {
+  CLIENT
+  CLINICIAN
+  SYSTEM
 }
 
 model Client {
@@ -20,51 +44,91 @@ model Client {
   email       String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
-  sessions    AssessmentSession[]
+  episodes    AssessmentEpisode[]
 
   @@index([clinicianId])
 }
 
-model AssessmentSession {
-  id                String        @id @default(cuid())
-  token             String        @unique
+// An evaluation case for one client. Holds clinician review state and (later) many modules.
+model AssessmentEpisode {
+  id                String           @id @default(cuid())
   clinicianId       String?
   clientId          String?
-  client            Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  status            SessionStatus @default(DRAFT)
+  client            Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  status            SessionStatus    @default(DRAFT)
   clientName        String?
-  answers           Json
+  // Clinician review state. Report fields are replaced by sectioned reports in a later sprint.
   overrides         Json?
   clinicianNotes    String?
   reportDraft       String?
   reportFinal       String?
   reportGeneratedAt DateTime?
   reportFinalizedAt DateTime?
-  consentAcceptedAt DateTime?
-  tokenExpiresAt    DateTime?
-  revokedAt         DateTime?
   notifiedAt        DateTime?
   submittedAt       DateTime?
   reviewedAt        DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  events            SessionEvent[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  modules           ModuleInstance[]
+  events            AuditEvent[]
 
   @@index([clinicianId])
   @@index([clientId])
   @@index([status])
 }
 
-model SessionEvent {
-  id        String            @id @default(cuid())
-  sessionId String
-  session   AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  actorType String
-  actorId   String?
-  action    String
-  metadata  Json?
-  createdAt DateTime          @default(now())
+// One administration of one instrument within an episode. Client-facing modules carry the
+// delivery token + consent; clinician-facing modules (added later) will leave those null.
+model ModuleInstance {
+  id                String            @id @default(cuid())
+  episodeId         String
+  episode           AssessmentEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  moduleKey         String
+  moduleVersion     String
+  audience          ModuleAudience    @default(CLIENT)
+  status            ModuleStatus      @default(NOT_STARTED)
+  // Client-facing delivery (null for clinician-administered modules).
+  token             String?           @unique
+  tokenExpiresAt    DateTime?
+  revokedAt         DateTime?
+  consentAcceptedAt DateTime?
+  submittedAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  responses         Response[]
+  events            AuditEvent[]
 
-  @@index([sessionId])
+  @@index([episodeId])
+  @@index([moduleKey])
+  @@index([status])
+}
+
+// One answered item within a module. Normalized so findings can link to specific evidence later.
+model Response {
+  id               String         @id @default(cuid())
+  moduleInstanceId String
+  moduleInstance   ModuleInstance @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+  itemId           String
+  value            Json
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([moduleInstanceId, itemId])
+  @@index([moduleInstanceId])
+}
+
+model AuditEvent {
+  id               String            @id @default(cuid())
+  episodeId        String
+  episode          AssessmentEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  moduleInstanceId String?
+  moduleInstance   ModuleInstance?   @relation(fields: [moduleInstanceId], references: [id], onDelete: SetNull)
+  actorType        String
+  actorId          String?
+  action           String
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+
+  @@index([episodeId])
   @@index([createdAt])
 }

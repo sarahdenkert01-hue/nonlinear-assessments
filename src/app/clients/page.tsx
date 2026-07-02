@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/empty-state";
 import { ClinicianHeader } from "@/components/clinician-header";
-import { listClientsForClinician } from "@/lib/sessions";
+import { listClientsForClinician } from "@/lib/episodes";
 import { ClientCreator } from "./client-creator";
 
 export default async function ClientsPage() {

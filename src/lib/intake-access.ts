@@ -1,4 +1,4 @@
-import type { AssessmentSessionRecord } from "@/lib/sessions";
+import type { AssessmentSessionRecord } from "@/lib/episodes";
 
 export type IntakeAccessDenial =
   | "not_found"

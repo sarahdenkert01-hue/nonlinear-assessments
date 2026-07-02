@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { ClinicianHeader } from "@/components/clinician-header";
-import { getSessionForClinician } from "@/lib/sessions";
+import { getSessionForClinician } from "@/lib/episodes";
 import { SessionAssessmentReview } from "./session-review-client";
 
 type PageProps = { params: Promise<{ id: string }> };

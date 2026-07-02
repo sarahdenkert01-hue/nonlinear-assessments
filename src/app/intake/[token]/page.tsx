@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
-import { getSessionByToken } from "@/lib/sessions";
+import { getSessionByToken } from "@/lib/episodes";
 import { IntakeBlocked } from "./intake-blocked";
 import { IntakeClient } from "./intake-client";
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonError, jsonNotFound } from "@/lib/api";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
-import { acceptSessionConsent, getSessionByToken } from "@/lib/sessions";
+import { acceptSessionConsent, getSessionByToken } from "@/lib/episodes";
 
 type RouteContext = { params: Promise<{ token: string }> };
 

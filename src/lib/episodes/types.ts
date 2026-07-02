@@ -18,7 +18,11 @@ export interface ClientRecord {
   updatedAt: string;
 }
 
-export interface AssessmentSessionRecord {
+// A single, flat view of an episode + its (Sprint 1) one client module + its answers.
+// The field shape is intentionally unchanged from the previous AssessmentSession record so the
+// rest of the app keeps working while the underlying tables change. `AssessmentSessionRecord`
+// remains exported as an alias for the files that still use that name.
+export interface EpisodeRecord {
   id: string;
   token: string;
   clinicianId: string | null;
@@ -40,6 +44,18 @@ export interface AssessmentSessionRecord {
   reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AssessmentSessionRecord = EpisodeRecord;
+
+// Lightweight per-module row for the episode overview page.
+export interface ModuleSummary {
+  id: string;
+  moduleKey: string;
+  moduleVersion: string;
+  audience: "CLIENT" | "CLINICIAN";
+  status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "COMPLETED";
+  answeredCount: number;
 }
 
 export interface CreateSessionInput {

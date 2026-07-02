@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireClinicianId } from "@/lib/auth";
 import { jsonError, jsonNotFound } from "@/lib/api";
-import { getClientForClinician, listSessionsForClient } from "@/lib/sessions";
+import { getClientForClinician, listSessionsForClient } from "@/lib/episodes";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

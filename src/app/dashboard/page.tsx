@@ -12,7 +12,7 @@ import {
 import {
   listSessionsForClinician,
   type DashboardFilter,
-} from "@/lib/sessions";
+} from "@/lib/episodes";
 import { DashboardFilters } from "./dashboard-filters";
 import { IntakeLinkCreator } from "./intake-link-creator";
 
@@ -66,14 +66,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </section>
 
         <section className="mt-12">
-          <h2 className="ui-section-title">Sessions</h2>
+          <h2 className="ui-section-title">Assessment episodes</h2>
           <Suspense fallback={<p className="mt-4 text-sm text-slate-500">Loading…</p>}>
             <DashboardFilters currentFilter={filter} currentSearch={search} />
           </Suspense>
 
           {sessions.length === 0 ? (
             <EmptyState
-              title={filter !== "all" || search ? "No matches" : "No sessions yet"}
+              title={filter !== "all" || search ? "No matches" : "No episodes yet"}
               description={
                 filter !== "all" || search
                   ? "Try a different filter or search term."
@@ -87,9 +87,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-slate-900">
+                        <Link
+                          href={`/cases/${s.id}`}
+                          className="font-medium text-slate-900 hover:underline"
+                        >
                           {s.clientName ?? "Unnamed client"}
-                        </p>
+                        </Link>
                         <StatusBadge variant={sessionStatusVariant(s)}>
                           {sessionStatusLabel(s)}
                         </StatusBadge>

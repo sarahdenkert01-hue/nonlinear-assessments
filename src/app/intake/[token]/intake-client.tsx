@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { AssessmentForm, type AssessmentAnswers } from "@/features/assessments";
 import { hasConsent } from "@/lib/intake-access";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
-import type { AssessmentSessionRecord } from "@/lib/sessions";
+import type { AssessmentSessionRecord } from "@/lib/episodes";
 import { IntakeConsent } from "./intake-consent";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";

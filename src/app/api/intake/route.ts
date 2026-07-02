@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireClinicianId } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
-import { createSession } from "@/lib/sessions";
+import { createSession } from "@/lib/episodes";
 
 export async function POST(request: Request) {
   try {

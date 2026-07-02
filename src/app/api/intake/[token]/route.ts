@@ -6,7 +6,7 @@ import { getIntakeAccessDenial } from "@/lib/intake-access";
 import {
   getSessionByToken,
   updateSessionAnswers,
-} from "@/lib/sessions";
+} from "@/lib/episodes";
 
 type RouteContext = { params: Promise<{ token: string }> };
 

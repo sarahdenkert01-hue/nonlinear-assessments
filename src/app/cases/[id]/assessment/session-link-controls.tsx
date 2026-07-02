@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { parseApiResponse } from "@/lib/parse-api-response";
-import type { AssessmentSessionRecord } from "@/lib/sessions";
+import type { AssessmentSessionRecord } from "@/lib/episodes";
 
 export function SessionLinkControls({
   session: initialSession,
@@ -19,7 +19,7 @@ export function SessionLinkControls({
     setLoading(action);
     setError(null);
     try {
-      const res = await fetch(`/api/sessions/${session.id}`, {
+      const res = await fetch(`/api/episodes/${session.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),

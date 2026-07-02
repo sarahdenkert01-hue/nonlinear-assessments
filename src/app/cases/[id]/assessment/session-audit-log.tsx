@@ -19,7 +19,7 @@ export function SessionAuditLog({ sessionId }: { sessionId: string }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/sessions/${sessionId}/audit`);
+        const res = await fetch(`/api/episodes/${sessionId}/audit`);
         if (!res.ok) throw new Error("Failed to load");
         const data = await res.json();
         if (!cancelled) setEvents(data.events ?? []);

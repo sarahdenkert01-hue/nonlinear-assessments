@@ -7,7 +7,7 @@ import {
   INTAKE_CONSENT_SECTIONS,
   INTAKE_CONSENT_TITLE,
 } from "@/content/intake-consent";
-import type { AssessmentSessionRecord } from "@/lib/sessions";
+import type { AssessmentSessionRecord } from "@/lib/episodes";
 
 export function IntakeConsent({
   session,
