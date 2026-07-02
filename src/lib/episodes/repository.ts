@@ -48,12 +48,12 @@ function clientModule(row: EpisodeRow): ModuleRow | null {
 }
 
 function toRecord(row: EpisodeRow): EpisodeRecord {
-  const module = clientModule(row);
-  const answers = responsesToAnswers(module?.responses ?? []);
+  const clientMod = clientModule(row);
+  const answers = responsesToAnswers(clientMod?.responses ?? []);
 
   return {
     id: row.id,
-    token: module?.token ?? "",
+    token: clientMod?.token ?? "",
     clinicianId: row.clinicianId,
     clientId: row.clientId,
     status: row.status,
@@ -65,9 +65,9 @@ function toRecord(row: EpisodeRow): EpisodeRecord {
     reportFinal: row.reportFinal,
     reportGeneratedAt: toIso(row.reportGeneratedAt),
     reportFinalizedAt: toIso(row.reportFinalizedAt),
-    consentAcceptedAt: toIso(module?.consentAcceptedAt),
-    tokenExpiresAt: toIso(module?.tokenExpiresAt),
-    revokedAt: toIso(module?.revokedAt),
+    consentAcceptedAt: toIso(clientMod?.consentAcceptedAt),
+    tokenExpiresAt: toIso(clientMod?.tokenExpiresAt),
+    revokedAt: toIso(clientMod?.revokedAt),
     notifiedAt: toIso(row.notifiedAt),
     submittedAt: toIso(row.submittedAt),
     reviewedAt: toIso(row.reviewedAt),
@@ -290,11 +290,11 @@ export async function acceptSessionConsent(token: string): Promise<EpisodeRecord
     where: { modules: { some: { token } } },
     include: episodeInclude,
   });
-  const module = row ? clientModule(row) : null;
-  if (!row || !module || row.status !== "DRAFT" || module.revokedAt) return null;
+  const clientMod = row ? clientModule(row) : null;
+  if (!row || !clientMod || row.status !== "DRAFT" || clientMod.revokedAt) return null;
 
   await prisma.moduleInstance.update({
-    where: { id: module.id },
+    where: { id: clientMod.id },
     data: { consentAcceptedAt: new Date(), status: "IN_PROGRESS" },
   });
 
@@ -310,13 +310,13 @@ export async function updateSessionAnswers(
     where: { modules: { some: { token } } },
     include: episodeInclude,
   });
-  const module = row ? clientModule(row) : null;
-  if (!row || !module || row.status !== "DRAFT" || module.revokedAt) return null;
-  if (!module.consentAcceptedAt) return null;
+  const clientMod = row ? clientModule(row) : null;
+  if (!row || !clientMod || row.status !== "DRAFT" || clientMod.revokedAt) return null;
+  if (!clientMod.consentAcceptedAt) return null;
 
-  await replaceModuleResponses(module.id, answers);
+  await replaceModuleResponses(clientMod.id, answers);
   await prisma.moduleInstance.update({
-    where: { id: module.id },
+    where: { id: clientMod.id },
     data: { status: "IN_PROGRESS" },
   });
   return loadEpisodeById(row.id);
@@ -330,17 +330,17 @@ export async function submitSession(
     where: { modules: { some: { token } } },
     include: episodeInclude,
   });
-  const module = row ? clientModule(row) : null;
-  if (!row || !module || row.status !== "DRAFT" || module.revokedAt) return null;
-  if (!module.consentAcceptedAt) return null;
+  const clientMod = row ? clientModule(row) : null;
+  if (!row || !clientMod || row.status !== "DRAFT" || clientMod.revokedAt) return null;
+  if (!clientMod.consentAcceptedAt) return null;
 
   if (answers !== undefined) {
-    await replaceModuleResponses(module.id, answers);
+    await replaceModuleResponses(clientMod.id, answers);
   }
 
   const now = new Date();
   await prisma.moduleInstance.update({
-    where: { id: module.id },
+    where: { id: clientMod.id },
     data: { status: "SUBMITTED", submittedAt: now },
   });
   await prisma.assessmentEpisode.update({
@@ -406,11 +406,11 @@ export async function revokeSessionToken(
     where: { id, clinicianId },
     include: episodeInclude,
   });
-  const module = row ? clientModule(row) : null;
-  if (!row || !module) return null;
+  const clientMod = row ? clientModule(row) : null;
+  if (!row || !clientMod) return null;
 
   await prisma.moduleInstance.update({
-    where: { id: module.id },
+    where: { id: clientMod.id },
     data: { revokedAt: new Date() },
   });
   await logSessionEvent(row.id, "session.token_revoked", {
@@ -429,14 +429,14 @@ export async function extendSessionToken(
     where: { id, clinicianId },
     include: episodeInclude,
   });
-  const module = row ? clientModule(row) : null;
-  if (!row || !module) return null;
+  const clientMod = row ? clientModule(row) : null;
+  if (!row || !clientMod) return null;
 
   const tokenExpiresAt = new Date();
   tokenExpiresAt.setDate(tokenExpiresAt.getDate() + days);
 
   await prisma.moduleInstance.update({
-    where: { id: module.id },
+    where: { id: clientMod.id },
     data: { tokenExpiresAt, revokedAt: null },
   });
   await logSessionEvent(row.id, "session.token_extended", {
