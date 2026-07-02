@@ -1,0 +1,516 @@
+/* Clinician findings review.
+   Palette is deliberately role-coded so the two mental models never blur:
+   - slate/neutral  = objective evidence (what the responses show)
+   - indigo         = clinical confidence (the clinician's own judgment)
+   - amber          = awaiting a decision
+   - emerald        = included in the report
+   Surfaces use theme variables so dark mode works without overrides. */
+
+.fr-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* ---- Progress header ---------------------------------------------------- */
+.fr-progress {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.35rem;
+}
+
+.fr-progress-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.fr-progress-headline {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.fr-progress-counts {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.fr-progress-counts strong {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.fr-progress-track {
+  margin-top: 0.85rem;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 8%, var(--surface));
+  overflow: hidden;
+}
+
+.fr-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #10b981;
+  transition: width 0.25s ease;
+}
+
+/* ---- Sections ----------------------------------------------------------- */
+.fr-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.fr-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fr-section-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--foreground) 7%, var(--surface));
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.fr-section--review .fr-section-title,
+.fr-section--review .fr-section-count {
+  color: #b45309;
+}
+.fr-section--review .fr-section-count {
+  background: color-mix(in srgb, #f59e0b 16%, var(--surface));
+}
+
+.fr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ---- Finding card ------------------------------------------------------- */
+.fr-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid transparent;
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.fr-card--review {
+  border-left-color: #f59e0b;
+}
+.fr-card--included {
+  border-left-color: #10b981;
+}
+
+.fr-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.35rem 0.9rem;
+}
+
+.fr-card-titlewrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.fr-card-label {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.fr-card-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.fr-source {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.fr-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.fr-status--review {
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 16%, var(--surface));
+}
+.fr-status--included {
+  color: #047857;
+  background: color-mix(in srgb, #10b981 16%, var(--surface));
+}
+.fr-status--excluded {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--foreground) 8%, var(--surface));
+}
+
+/* ---- Metrics: evidence strength vs clinical confidence ------------------ */
+.fr-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 0 1.35rem 1.1rem;
+}
+
+.fr-metric-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.fr-metric-hint {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Evidence strength — neutral, objective */
+.fr-strength {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.fr-meter {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.fr-meter-seg {
+  width: 20px;
+  height: 7px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--foreground) 12%, var(--surface));
+}
+.fr-meter-seg--on {
+  background: #475569;
+}
+
+html.dark .fr-meter-seg--on {
+  background: #94a3b8;
+}
+
+.fr-strength-word {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.fr-strength--none .fr-strength-word {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Clinical confidence — indigo, subjective */
+.fr-conf {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fr-conf-btn {
+  appearance: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.fr-conf-btn:last-child {
+  border-right: none;
+}
+.fr-conf-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, #4f46e5 8%, var(--surface));
+}
+.fr-conf-btn--active {
+  background: #4f46e5;
+  color: #fff;
+}
+.fr-conf-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* ---- Disclosures (evidence + differentials) ----------------------------- */
+.fr-disclosure {
+  border-top: 1px solid var(--border);
+}
+
+.fr-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.75rem 1.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fr-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.fr-disclosure > summary::before {
+  content: "›";
+  display: inline-block;
+  font-size: 1rem;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.fr-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+.fr-disclosure-meta {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.fr-evidence-body,
+.fr-alt-body {
+  padding: 0 1.35rem 1.1rem;
+}
+
+.fr-evidence-item {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 3%, var(--surface));
+}
+.fr-evidence-item + .fr-evidence-item {
+  margin-top: 0.5rem;
+}
+
+.fr-evidence-q {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.fr-evidence-a {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fr-answer-chip {
+  font-weight: 700;
+  color: #047857;
+  background: color-mix(in srgb, #10b981 16%, var(--surface));
+  border-radius: 6px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.76rem;
+}
+
+.fr-evidence-empty {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.fr-alt-body textarea {
+  margin-top: 0;
+}
+
+/* ---- Card footer: the decision ------------------------------------------ */
+.fr-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.35rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--foreground) 2.5%, var(--surface));
+}
+
+.fr-decision-prompt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-right: auto;
+}
+
+.fr-included-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #047857;
+  margin-right: auto;
+}
+
+.fr-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.fr-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.fr-btn--confirm {
+  background: #10b981;
+  color: #fff;
+}
+.fr-btn--confirm:hover:not(:disabled) {
+  background: #059669;
+}
+.fr-btn--exclude {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--muted);
+}
+.fr-btn--exclude:hover:not(:disabled) {
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+.fr-btn--ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+.fr-btn--ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 5%, var(--surface));
+}
+
+/* ---- Excluded (collapsed) ----------------------------------------------- */
+.fr-excluded {
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: transparent;
+}
+.fr-excluded > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fr-excluded > summary::-webkit-details-marker {
+  display: none;
+}
+.fr-excluded > summary::before {
+  content: "›";
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.fr-excluded[open] > summary::before {
+  transform: rotate(90deg);
+}
+.fr-excluded-body {
+  padding: 0 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.fr-excluded-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.fr-excluded-name {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.fr-excluded-name strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* ---- Supporting panels -------------------------------------------------- */
+.fr-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.15rem 1.35rem;
+}
+.fr-panel-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0 0 0.35rem;
+}
+.fr-panel-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 0.85rem;
+  line-height: 1.5;
+}
+.fr-add-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.fr-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+}
+
+@media (max-width: 640px) {
+  .fr-metrics {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .fr-actions {
+    flex-wrap: wrap;
+  }
+}
