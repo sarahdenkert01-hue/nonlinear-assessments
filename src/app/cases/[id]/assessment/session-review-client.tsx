@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import {
-  AssessmentReview,
-  type ClinicianOverrides,
-} from "@/features/assessments";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import type { AssessmentSessionRecord } from "@/lib/episodes";
+import type { FindingRecord } from "@/lib/findings/types";
 import {
   StatusBadge,
   sessionStatusLabel,
   sessionStatusVariant,
 } from "@/components/ui/status-badge";
+import { FindingsReview } from "./findings-review";
 import { SessionAuditLog } from "./session-audit-log";
 import { SessionLinkControls } from "./session-link-controls";
 
@@ -21,8 +19,10 @@ type PersistStatus = "idle" | "saving" | "saved" | "error";
 
 export function SessionAssessmentReview({
   session: initialSession,
+  findings,
 }: {
   session: AssessmentSessionRecord;
+  findings: FindingRecord[];
 }) {
   const [session, setSession] = useState(initialSession);
   const [persistStatus, setPersistStatus] = useState<PersistStatus>("idle");
@@ -30,12 +30,8 @@ export function SessionAssessmentReview({
   const reportFinalized = Boolean(session.reportFinalizedAt);
 
   const persistReview = useDebouncedCallback(
-    async (payload: {
-      overrides?: ClinicianOverrides;
-      clinicianNotes?: string;
-      reportDraft?: string;
-    }) => {
-      if (reportFinalized && (payload.overrides || payload.reportDraft)) return;
+    async (payload: { clinicianNotes?: string; reportDraft?: string }) => {
+      if (reportFinalized && payload.reportDraft) return;
       setPersistStatus("saving");
       try {
         const res = await fetch(`/api/episodes/${session.id}`, {
@@ -58,29 +54,15 @@ export function SessionAssessmentReview({
     600,
   );
 
-  const handleOverridesChange = useCallback(
-    (overrides: ClinicianOverrides) => {
-      if (reportFinalized) return;
-      setPersistStatus("idle");
-      persistReview({
-        overrides,
-        clinicianNotes: session.clinicianNotes ?? "",
-        reportDraft: session.reportDraft ?? undefined,
-      });
-    },
-    [persistReview, session.clinicianNotes, session.reportDraft, reportFinalized],
-  );
-
   const handleNotesChange = useCallback(
     (clinicianNotes: string) => {
       setPersistStatus("idle");
       persistReview({
-        overrides: session.overrides ?? {},
         clinicianNotes,
         reportDraft: session.reportDraft ?? undefined,
       });
     },
-    [persistReview, session.overrides, session.reportDraft],
+    [persistReview, session.reportDraft],
   );
 
   const handleReportDraftChange = useCallback(
@@ -89,12 +71,11 @@ export function SessionAssessmentReview({
       setSession((prev) => ({ ...prev, reportDraft }));
       setPersistStatus("idle");
       persistReview({
-        overrides: session.overrides ?? {},
         clinicianNotes: session.clinicianNotes ?? "",
         reportDraft,
       });
     },
-    [persistReview, session.overrides, session.clinicianNotes, reportFinalized],
+    [persistReview, session.clinicianNotes, reportFinalized],
   );
 
   const handleMarkReviewed = async () => {
@@ -183,16 +164,14 @@ export function SessionAssessmentReview({
           </div>
         </div>
       </div>
-      <AssessmentReview
-        answers={session.answers}
-        clientName={session.clientName ?? undefined}
-        initialOverrides={session.overrides ?? {}}
-        initialNotes={session.clinicianNotes ?? ""}
+      <FindingsReview
         sessionId={session.id}
-        initialReportDraft={session.reportDraft}
+        clientName={session.clientName ?? undefined}
+        initialFindings={findings}
+        clinicianNotes={session.clinicianNotes ?? ""}
+        reportDraft={session.reportDraft}
         reportGeneratedAt={session.reportGeneratedAt}
         reportFinalized={reportFinalized}
-        onOverridesChange={handleOverridesChange}
         onNotesChange={handleNotesChange}
         onReportDraftChange={handleReportDraftChange}
         onReportGenerated={(report) => {

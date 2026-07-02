@@ -24,6 +24,18 @@ export interface ReportContext {
 
 /** Build structured context for template or LLM report generation. */
 export function buildReportContext(input: ReportGenerationInput): ReportContext {
+  // Real episode flow: build straight from the clinician's included findings.
+  // Dev preview: no persisted findings, so compute themes from raw answers as before.
+  const themes = input.findingThemes ?? computeThemesFromAnswers(input);
+
+  return {
+    clientName: input.clientName?.trim() || "Client",
+    clinicianNotes: input.clinicianNotes?.trim() || undefined,
+    themes,
+  };
+}
+
+function computeThemesFromAnswers(input: ReportGenerationInput): ThemeReportContext[] {
   const scores = computeThemeScores(input.answers);
   const resolved = resolveThemesWithOverrides(scores, input.overrides);
   const included =
@@ -31,7 +43,7 @@ export function buildReportContext(input: ReportGenerationInput): ReportContext 
       ? input.resolvedThemes
       : getIncludedThemes(resolved);
 
-  const themes: ThemeReportContext[] = included.map((theme) => ({
+  return included.map((theme) => ({
     id: theme.id,
     label: theme.label,
     category: theme.category,
@@ -46,10 +58,4 @@ export function buildReportContext(input: ReportGenerationInput): ReportContext 
       }),
     ),
   }));
-
-  return {
-    clientName: input.clientName?.trim() || "Client",
-    clinicianNotes: input.clinicianNotes?.trim() || undefined,
-    themes,
-  };
 }

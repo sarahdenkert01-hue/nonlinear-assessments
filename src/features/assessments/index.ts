@@ -23,3 +23,5 @@ export { AssessmentForm } from "./components/AssessmentForm";
 export type { AssessmentFormProps } from "./components/AssessmentForm";
 export { AssessmentReview } from "./components/AssessmentReview";
 export type { AssessmentReviewProps } from "./components/AssessmentReview";
+export { ReportPanel } from "./components/ReportPanel";
+export type { ReportPanelProps } from "./components/ReportPanel";

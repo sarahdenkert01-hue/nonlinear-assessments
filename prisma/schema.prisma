@@ -37,6 +37,29 @@ enum AuthorType {
   SYSTEM
 }
 
+// Lifecycle of a clinical finding. PROPOSED/ACCEPTED/EDITED are included in the report;
+// EXCLUDED is kept for the record but left out. A finding is never auto-"confirmed".
+enum FindingStatus {
+  PROPOSED
+  ACCEPTED
+  EDITED
+  EXCLUDED
+}
+
+// Where a finding originated. The algorithm only ever proposes; clinicians own the rest.
+enum FindingSource {
+  ALGORITHM
+  CLINICIAN
+}
+
+// Clinical confidence is clinician-owned. Findings start with NO confidence set (null);
+// the algorithm never implies a confidence level.
+enum Confidence {
+  LOW
+  MODERATE
+  HIGH
+}
+
 model Client {
   id          String              @id @default(cuid())
   clinicianId String
@@ -70,6 +93,7 @@ model AssessmentEpisode {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   modules           ModuleInstance[]
+  findings          Finding[]
   events            AuditEvent[]
 
   @@index([clinicianId])
@@ -96,6 +120,7 @@ model ModuleInstance {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   responses         Response[]
+  findings          Finding[]
   events            AuditEvent[]
 
   @@index([episodeId])
@@ -112,6 +137,7 @@ model Response {
   value            Json
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+  evidence         FindingEvidence[]
 
   @@unique([moduleInstanceId, itemId])
   @@index([moduleInstanceId])
@@ -131,4 +157,47 @@ model AuditEvent {
 
   @@index([episodeId])
   @@index([createdAt])
+}
+
+// An interpreted clinical signal for an episode (Sprint 2: one per scored theme). The algorithm
+// proposes findings; the clinician owns status, confidence, and alternative explanations. Each
+// finding links to the exact responses that support it via FindingEvidence.
+model Finding {
+  id                     String            @id @default(cuid())
+  episodeId              String
+  episode                AssessmentEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  moduleInstanceId       String?
+  moduleInstance         ModuleInstance?   @relation(fields: [moduleInstanceId], references: [id], onDelete: SetNull)
+  code                   String
+  label                  String
+  category               String?
+  status                 FindingStatus     @default(PROPOSED)
+  source                 FindingSource     @default(ALGORITHM)
+  // Clinician-owned; null until a clinician sets it. The algorithm never fills this in.
+  confidence             Confidence?
+  alternativeExplanations String[]
+  rationale              String?
+  hits                   Int               @default(0)
+  total                  Int               @default(0)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  evidence               FindingEvidence[]
+
+  @@index([episodeId])
+  @@index([status])
+}
+
+// Links a finding to a specific response (the endorsed item behind it). itemId is kept alongside
+// responseId so the evidence trail survives even if a response row is later removed.
+model FindingEvidence {
+  id         String    @id @default(cuid())
+  findingId  String
+  finding    Finding   @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  responseId String?
+  response   Response? @relation(fields: [responseId], references: [id], onDelete: SetNull)
+  itemId     String?
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  @@index([findingId])
 }

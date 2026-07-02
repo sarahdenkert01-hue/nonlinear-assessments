@@ -3,6 +3,7 @@ import type {
   ClinicianOverrides,
   ResolvedTheme,
 } from "@/features/assessments/types";
+import type { ThemeReportContext } from "./build-context";
 
 export type LlmProvider = "gemini" | "anthropic";
 
@@ -21,6 +22,12 @@ export interface ReportGenerationInput {
   /** When set, LLM should rewrite summary/next-steps only and keep theme blocks stable. */
   narrativeOnly?: boolean;
   existingDraft?: string;
+  /**
+   * Included clinical findings mapped to report themes. When present (the real episode flow),
+   * the report is built from these instead of re-computing themes from raw answers. Left unset by
+   * the dev preview, which has no persisted findings.
+   */
+  findingThemes?: ThemeReportContext[];
 }
 
 export interface GeneratedReport {

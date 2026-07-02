@@ -5,6 +5,7 @@ import { requireClinicianId } from "@/lib/auth";
 import { jsonError, jsonNotFound } from "@/lib/api";
 import { generateClinicalReport } from "@/lib/reports/generate";
 import { getSessionForClinician, saveSessionReport } from "@/lib/episodes";
+import { buildFindingThemeContext, ensureFindingsForEpisode } from "@/lib/findings";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -43,11 +44,17 @@ export async function POST(request: Request, context: RouteContext) {
           ? "standard"
           : undefined;
 
+    // The report is a projection of the clinician's findings, not a re-computation from answers.
+    // Generate findings on first pass (idempotent), then build the report from included findings.
+    await ensureFindingsForEpisode(id);
+    const findingThemes = await buildFindingThemeContext(id);
+
     const report = await generateClinicalReport({
       clientName: session.clientName ?? undefined,
       answers: session.answers,
       overrides,
       resolvedThemes: [],
+      findingThemes,
       clinicianNotes,
       profile:
         profile ??
