@@ -60,6 +60,16 @@ enum Confidence {
   HIGH
 }
 
+enum EvidenceSourceType {
+  CLIENT_SELF_REPORT
+  CLINICIAN_INTERVIEW
+  CLINICIAN_OBSERVATION
+  COLLATERAL
+  STRUCTURED_MEASURE
+  MANUAL_NOTE
+  FINDING
+}
+
 model Client {
   id          String              @id @default(cuid())
   clinicianId String
@@ -94,6 +104,7 @@ model AssessmentEpisode {
   updatedAt         DateTime         @updatedAt
   modules           ModuleInstance[]
   findings          Finding[]
+  domainReviews     DomainReview[]
   events            AuditEvent[]
 
   @@index([clinicianId])
@@ -200,4 +211,42 @@ model FindingEvidence {
   createdAt  DateTime  @default(now())
 
   @@index([findingId])
+}
+
+// Clinician-owned synthesis for one clinical domain within an episode. Aggregates confirmed
+// findings and other evidence — never auto-filled by the algorithm.
+model DomainReview {
+  id                      String              @id @default(cuid())
+  episodeId               String
+  episode                 AssessmentEpisode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  domainId                String
+  confidence              Confidence?
+  alternativeExplanations String[]
+  clinicalNotes           String?
+  evidenceGapNotes        String?
+  summaryDraft            String?
+  reviewedAt              DateTime?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  evidence                DomainEvidence[]
+
+  @@unique([episodeId, domainId])
+  @@index([episodeId])
+}
+
+// One traceable piece of evidence contributing to a domain review.
+model DomainEvidence {
+  id               String             @id @default(cuid())
+  domainReviewId   String
+  domainReview     DomainReview       @relation(fields: [domainReviewId], references: [id], onDelete: Cascade)
+  sourceType       EvidenceSourceType
+  findingId        String?
+  responseId       String?
+  moduleInstanceId String?
+  itemId           String?
+  excerpt          String?
+  createdAt        DateTime           @default(now())
+
+  @@unique([domainReviewId, findingId])
+  @@index([domainReviewId])
 }

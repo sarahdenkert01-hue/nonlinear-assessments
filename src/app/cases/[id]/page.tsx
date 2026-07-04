@@ -12,6 +12,10 @@ import {
   listModulesForEpisode,
   type ModuleSummary,
 } from "@/lib/episodes";
+import {
+  countConfirmedFindings,
+  listDomainSummariesForEpisode,
+} from "@/lib/domains";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -35,6 +39,12 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
   if (!episode) notFound();
 
   const modules = (await listModulesForEpisode(id, userId)) ?? [];
+  const confirmedFindingCount =
+    episode.status !== "DRAFT" ? await countConfirmedFindings(id) : 0;
+  const domainSummaries =
+    episode.status !== "DRAFT" ? await listDomainSummariesForEpisode(id) : [];
+  const domainsWithEvidence = domainSummaries.filter((d) => d.hasConfirmedFindings).length;
+  const domainsReviewed = domainSummaries.filter((d) => d.reviewedAt).length;
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -51,6 +61,50 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
           </StatusBadge>
         </header>
         <p className="ui-page-lead mt-1">Assessment episode overview.</p>
+
+        <section className="mt-8">
+          <h2 className="ui-section-title">Review workflow</h2>
+          <ul className="mt-4 space-y-2">
+            {episode.status !== "DRAFT" && (
+              <>
+                <li className="ui-card px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">1. Finding review</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Confirm or exclude theme-level findings from the screener.
+                      </p>
+                    </div>
+                    <Link
+                      href={`/cases/${episode.id}/assessment`}
+                      className="ui-btn ui-btn-primary px-3 py-1.5 text-xs"
+                    >
+                      Review findings
+                    </Link>
+                  </div>
+                </li>
+                <li className="ui-card px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">2. Domain review</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {confirmedFindingCount > 0
+                          ? `${confirmedFindingCount} confirmed finding${confirmedFindingCount === 1 ? "" : "s"} · ${domainsWithEvidence} domain${domainsWithEvidence === 1 ? "" : "s"} with evidence · ${domainsReviewed} reviewed`
+                          : "Confirm findings first, then synthesize by clinical domain."}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/cases/${episode.id}/domains`}
+                      className={`ui-btn px-3 py-1.5 text-xs${confirmedFindingCount > 0 ? " ui-btn-secondary" : " ui-btn-ghost"}`}
+                    >
+                      Domain review
+                    </Link>
+                  </div>
+                </li>
+              </>
+            )}
+          </ul>
+        </section>
 
         <section className="mt-8">
           <h2 className="ui-section-title">Modules</h2>
@@ -73,25 +127,19 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
           </ul>
         </section>
 
-        <section className="mt-8 flex flex-wrap gap-2">
-          {!episode.revokedAt && episode.token && (
-            <Link
-              href={`/intake/${episode.token}`}
-              target="_blank"
-              className="ui-btn ui-btn-secondary px-3 py-1.5 text-xs"
-            >
-              Open intake link
-            </Link>
-          )}
-          {episode.status !== "DRAFT" && (
-            <Link
-              href={`/cases/${episode.id}/assessment`}
-              className="ui-btn ui-btn-primary px-3 py-1.5 text-xs"
-            >
-              Review
-            </Link>
-          )}
-        </section>
+        {episode.status !== "DRAFT" && (
+          <section className="mt-8 flex flex-wrap gap-2">
+            {!episode.revokedAt && episode.token && (
+              <Link
+                href={`/intake/${episode.token}`}
+                target="_blank"
+                className="ui-btn ui-btn-secondary px-3 py-1.5 text-xs"
+              >
+                Open intake link
+              </Link>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );

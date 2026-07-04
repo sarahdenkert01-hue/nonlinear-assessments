@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import type { AssessmentSessionRecord } from "@/lib/episodes";
@@ -28,6 +28,11 @@ export function SessionAssessmentReview({
   const [persistStatus, setPersistStatus] = useState<PersistStatus>("idle");
   const [markingReviewed, setMarkingReviewed] = useState(false);
   const reportFinalized = Boolean(session.reportFinalizedAt);
+
+  const confirmedFindingCount = useMemo(
+    () => findings.filter((f) => f.status === "ACCEPTED" || f.status === "EDITED").length,
+    [findings],
+  );
 
   const persistReview = useDebouncedCallback(
     async (payload: { clinicianNotes?: string; reportDraft?: string }) => {
@@ -164,6 +169,22 @@ export function SessionAssessmentReview({
           </div>
         </div>
       </div>
+      {confirmedFindingCount > 0 && (
+        <div className="border-b border-[var(--border)] bg-[color-mix(in_srgb,#4f46e5_8%,var(--surface))] px-6 py-3">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 text-sm">
+            <span className="text-[var(--muted)]">
+              <strong className="text-[var(--foreground)]">{confirmedFindingCount}</strong> finding
+              {confirmedFindingCount === 1 ? "" : "s"} confirmed — ready for domain synthesis.
+            </span>
+            <Link
+              href={`/cases/${session.id}/domains`}
+              className="ui-btn ui-btn-primary px-3 py-1.5 text-xs"
+            >
+              Continue to domain review →
+            </Link>
+          </div>
+        </div>
+      )}
       <FindingsReview
         sessionId={session.id}
         clientName={session.clientName ?? undefined}
