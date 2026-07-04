@@ -305,6 +305,201 @@
   line-height: 1.5;
 }
 
+.dm-opportunity-list {
+  margin: 0 0 0.85rem;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  color: #0369a1;
+  line-height: 1.55;
+}
+
+/* Sprint 5 — Clinical Intelligence layout */
+.dm-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.dm-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dm-jump-nav {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  padding: 0.65rem 0.85rem;
+  background: color-mix(in srgb, var(--surface) 94%, var(--foreground) 6%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+.dm-jump-domain {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-right: 0.25rem;
+}
+.dm-jump-stat {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.dm-jump-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.dm-jump-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+.dm-workspace-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .dm-workspace-layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 1.5rem;
+  }
+}
+
+.dm-reasoning-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.dm-report-column {
+  min-width: 0;
+}
+@media (min-width: 960px) {
+  .dm-report-column {
+    position: sticky;
+    top: 3.25rem;
+    align-self: start;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+  }
+}
+
+.dm-section {
+  scroll-margin-top: 4.5rem;
+}
+.dm-question-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4f46e5;
+}
+
+.dm-know-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.85rem;
+}
+.dm-know-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.dm-know-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+.dm-know-stat-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dm-ephemeral-panel {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 1px dashed color-mix(in srgb, #8b5cf6 35%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, #8b5cf6 5%, var(--surface));
+}
+.dm-ephemeral-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dm-private-notes {
+  margin-top: 0.25rem;
+}
+
+.dm-report-panel {
+  border-color: color-mix(in srgb, #10b981 25%, var(--border));
+}
+
+.dm-shortcuts-wrap {
+  position: relative;
+}
+.dm-shortcuts-popover {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 20;
+  min-width: 16rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+}
+.dm-shortcuts-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.dm-shortcuts-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dm-shortcuts-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.78rem;
+  padding: 0.25rem 0;
+  color: var(--foreground);
+}
+.dm-shortcuts-keys {
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+
 .dm-conf {
   display: inline-flex;
   border: 1px solid var(--border);

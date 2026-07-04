@@ -49,6 +49,7 @@ export interface DomainDetail extends DomainSummary {
   clinicalNotes: string | null;
   evidenceGapNotes: string | null;
   evidenceSummaryDraft: string | null;
+  suggestedQuestionsDraft: string | null;
   summaryDraft: string | null;
   findings: DomainFindingRef[];
   evidence: DomainEvidenceItem[];
@@ -60,6 +61,7 @@ export interface UpdateDomainReviewInput {
   clinicalNotes?: string | null;
   evidenceGapNotes?: string | null;
   evidenceSummaryDraft?: string | null;
+  suggestedQuestionsDraft?: string | null;
   summaryDraft?: string | null;
   reviewed?: boolean;
 }

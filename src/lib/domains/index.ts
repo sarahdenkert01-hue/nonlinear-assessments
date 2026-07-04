@@ -19,7 +19,9 @@ export {
   countConfirmedFindings,
   ensureDomainEvidenceForEpisode,
   generateAndSaveEvidenceSummary,
+  generateAndSaveSuggestedQuestions,
   getDomainDetailForEpisode,
   listDomainSummariesForEpisode,
   updateDomainReview,
 } from "./repository";
+export { computeEvidenceCoverage } from "./gaps";

@@ -7,6 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { computeSuggestedGaps, type GapFindingSignal } from "./gaps";
 import { getAllDomains, getDomainById, getDomainsForTheme } from "./registry";
 import { generateDomainEvidenceSummary } from "./synthesize-summary";
+import {
+  buildQuestionsContextFromDetail,
+  generateSuggestedQuestions,
+} from "./generate-questions";
 import type {
   DomainDetail,
   DomainEvidenceItem,
@@ -204,6 +208,7 @@ export async function getDomainDetailForEpisode(
     clinicalNotes: review?.clinicalNotes ?? null,
     evidenceGapNotes: review?.evidenceGapNotes ?? null,
     evidenceSummaryDraft: review?.evidenceSummaryDraft ?? null,
+    suggestedQuestionsDraft: review?.suggestedQuestionsDraft ?? null,
     summaryDraft: review?.summaryDraft ?? null,
     findings,
     evidence: buildEvidenceItems(review?.evidence ?? [], findingRefs),
@@ -241,6 +246,9 @@ export async function updateDomainReview(
       ...(input.evidenceSummaryDraft !== undefined
         ? { evidenceSummaryDraft: input.evidenceSummaryDraft }
         : {}),
+      ...(input.suggestedQuestionsDraft !== undefined
+        ? { suggestedQuestionsDraft: input.suggestedQuestionsDraft }
+        : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
       ...(input.reviewed === false ? { reviewedAt: null } : {}),
@@ -256,6 +264,9 @@ export async function updateDomainReview(
         : {}),
       ...(input.evidenceSummaryDraft !== undefined
         ? { evidenceSummaryDraft: input.evidenceSummaryDraft }
+        : {}),
+      ...(input.suggestedQuestionsDraft !== undefined
+        ? { suggestedQuestionsDraft: input.suggestedQuestionsDraft }
         : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
@@ -345,6 +356,42 @@ export async function generateAndSaveEvidenceSummary(
   });
 
   await logSessionEvent(episodeId, "review.domain_evidence_summary_generated", {
+    actorType: "clinician",
+    actorId: clinicianId,
+    metadata: { domainId, source: result.source },
+  });
+
+  return getDomainDetailForEpisode(episodeId, domainId);
+}
+
+export async function generateAndSaveSuggestedQuestions(
+  episodeId: string,
+  domainId: string,
+  clinicianId: string,
+): Promise<DomainDetail | null> {
+  if (!getDomainById(domainId)) return null;
+
+  const episode = await prisma.assessmentEpisode.findFirst({
+    where: { id: episodeId, clinicianId },
+  });
+  if (!episode) return null;
+
+  const detail = await getDomainDetailForEpisode(episodeId, domainId);
+  if (!detail) return null;
+
+  const result = await generateSuggestedQuestions(buildQuestionsContextFromDetail(detail));
+
+  await prisma.domainReview.upsert({
+    where: { episodeId_domainId: { episodeId, domainId } },
+    create: {
+      episodeId,
+      domainId,
+      suggestedQuestionsDraft: result.draft,
+    },
+    update: { suggestedQuestionsDraft: result.draft },
+  });
+
+  await logSessionEvent(episodeId, "review.domain_questions_generated", {
     actorType: "clinician",
     actorId: clinicianId,
     metadata: { domainId, source: result.source },

@@ -7,14 +7,15 @@ export interface GapFindingSignal {
   category: string | null;
 }
 
-const GAP_MESSAGES: Partial<Record<EvidenceSourceType, string>> = {
+const OPPORTUNITY_MESSAGES: Partial<Record<EvidenceSourceType, string>> = {
   CLINICIAN_INTERVIEW:
-    "No clinician interview evidence linked yet — consider a structured interview to explore this domain",
+    "Interview opportunity: explore this domain in a structured clinician interview",
   CLINICIAN_OBSERVATION:
-    "No direct observation evidence linked yet — consider session observation or behavioral notes",
+    "Observation opportunity: add session observation or behavioral notes",
   COLLATERAL:
-    "No collateral informant evidence linked yet — consider partner, family, or school input where appropriate",
-  MANUAL_NOTE: "No clinician notes added yet — free-text evidence can capture context not in modules",
+    "Collateral opportunity: consider partner, family, or school input where appropriate",
+  MANUAL_NOTE:
+    "Note opportunity: capture contextual strengths, history, or observations not in modules",
 };
 
 function hasInconsistentFindings(findings: GapFindingSignal[]): boolean {
@@ -23,7 +24,7 @@ function hasInconsistentFindings(findings: GapFindingSignal[]): boolean {
   return Math.max(...rates) - Math.min(...rates) >= 0.4;
 }
 
-/** Suggest documentation gaps — prompts only, never diagnostic conclusions. */
+/** Assessment opportunities — prompts to strengthen understanding, not deficiencies. */
 export function computeSuggestedGaps(
   domainId: string,
   presentSources: EvidenceSourceType[],
@@ -33,23 +34,29 @@ export function computeSuggestedGaps(
   const domain = getDomainById(domainId);
   if (!domain) return [];
 
-  const gaps: string[] = [];
+  const opportunities: string[] = [];
   const present = new Set(presentSources);
 
   if (!hasAnyEvidence) {
     if (domainId === "developmental-history") {
-      gaps.push("No developmental history evidence captured yet");
+      opportunities.push(
+        "Developmental history opportunity: gather lifespan and childhood presentation evidence",
+      );
     } else if (domainId === "strengths-protective-factors") {
-      gaps.push("Strengths and protective factors not yet documented");
+      opportunities.push(
+        "Strengths opportunity: document protective factors and compensatory strategies",
+      );
     } else {
-      gaps.push("No confirmed findings linked to this domain yet");
+      opportunities.push(
+        "Finding review opportunity: confirm relevant findings or add a clinician note for this domain",
+      );
     }
-    return gaps;
+    return opportunities;
   }
 
   for (const expected of domain.expectedSourceTypes) {
-    if (!present.has(expected) && GAP_MESSAGES[expected]) {
-      gaps.push(GAP_MESSAGES[expected]!);
+    if (!present.has(expected) && OPPORTUNITY_MESSAGES[expected]) {
+      opportunities.push(OPPORTUNITY_MESSAGES[expected]!);
     }
   }
 
@@ -58,16 +65,40 @@ export function computeSuggestedGaps(
     !present.has("CLINICIAN_INTERVIEW") &&
     (present.has("FINDING") || present.has("CLIENT_SELF_REPORT"))
   ) {
-    gaps.push(
-      "Early developmental or childhood history not yet linked — consider whether retrospective history is relevant to this domain",
+    opportunities.push(
+      "Developmental history opportunity: consider early presentation and longitudinal course for this domain",
+    );
+  }
+
+  if (!present.has("COLLATERAL") && hasAnyEvidence) {
+    opportunities.push(
+      "Contextual opportunity: collateral input may clarify functional impact and daily patterns",
     );
   }
 
   if (hasInconsistentFindings(findings)) {
-    gaps.push(
-      "Supporting findings vary in indicator strength — consider whether additional evidence clarifies the pattern",
+    opportunities.push(
+      "Clarification opportunity: supporting findings vary in strength — additional evidence may sharpen the pattern",
     );
   }
 
-  return gaps;
+  return opportunities;
+}
+
+export function computeEvidenceCoverage(
+  domainId: string,
+  presentSources: EvidenceSourceType[],
+): { present: number; expected: number; percent: number } {
+  const domain = getDomainById(domainId);
+  if (!domain || domain.expectedSourceTypes.length === 0) {
+    return { present: 0, expected: 0, percent: 0 };
+  }
+  const presentSet = new Set(presentSources);
+  const expected = domain.expectedSourceTypes.length;
+  const present = domain.expectedSourceTypes.filter((s) => presentSet.has(s)).length;
+  return {
+    present,
+    expected,
+    percent: Math.round((present / expected) * 100),
+  };
 }

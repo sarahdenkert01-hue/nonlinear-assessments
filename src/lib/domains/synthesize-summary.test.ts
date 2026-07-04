@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { generateTemplateEvidenceSummary } from "./synthesize-summary";
+import { generateTemplateClinicalSynthesis } from "./synthesize-summary";
 
-describe("generateTemplateEvidenceSummary", () => {
-  it("lists confirmed findings and evidence without diagnostic language", () => {
-    const draft = generateTemplateEvidenceSummary({
+describe("generateTemplateClinicalSynthesis", () => {
+  it("lists confirmed findings with observation sections without diagnostic language", () => {
+    const draft = generateTemplateClinicalSynthesis({
       domainLabel: "Executive Function",
       domainDescription: "Planning, organization, and task initiation.",
       findings: [
@@ -25,7 +25,7 @@ describe("generateTemplateEvidenceSummary", () => {
     });
 
     expect(draft).toMatch(/Task paralysis/i);
-    expect(draft).toMatch(/Starting tasks is hard/i);
+    expect(draft).toMatch(/OBSERVATIONS/i);
     expect(draft.toLowerCase()).not.toMatch(/diagnos|autism|adhd/);
   });
 });

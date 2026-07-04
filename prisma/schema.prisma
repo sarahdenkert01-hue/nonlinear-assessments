@@ -225,6 +225,7 @@ model DomainReview {
   clinicalNotes           String?
   evidenceGapNotes        String?
   evidenceSummaryDraft    String?
+  suggestedQuestionsDraft String?
   summaryDraft            String?
   reviewedAt              DateTime?
   createdAt               DateTime            @default(now())
