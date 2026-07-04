@@ -9,6 +9,8 @@ import {
   updateDomainReview,
   type UpdateDomainReviewInput,
 } from "@/lib/domains";
+import { parseClinicalQuestionPrompts } from "@/lib/domains/clinical-questions";
+import type { ClinicalQuestionPrompt } from "@/lib/domains/types";
 
 type RouteContext = { params: Promise<{ id: string; domainId: string }> };
 
@@ -83,6 +85,15 @@ export async function PATCH(request: Request, context: RouteContext) {
         typeof body.suggestedQuestionsDraft === "string" && body.suggestedQuestionsDraft.trim()
           ? body.suggestedQuestionsDraft.trim()
           : null;
+    }
+
+    if ("clinicalQuestionPrompts" in body) {
+      if (!Array.isArray(body.clinicalQuestionPrompts)) {
+        return jsonError("clinicalQuestionPrompts must be an array", 400);
+      }
+      input.clinicalQuestionPrompts = parseClinicalQuestionPrompts(
+        body.clinicalQuestionPrompts,
+      ) as ClinicalQuestionPrompt[];
     }
 
     if ("summaryDraft" in body) {

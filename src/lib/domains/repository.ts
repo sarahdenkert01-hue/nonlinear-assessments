@@ -4,7 +4,18 @@ import { isAssessmentQuestion } from "@/features/assessments/types";
 import { logSessionEvent } from "@/lib/audit";
 import { responsesToAnswers } from "@/lib/episodes/responses";
 import { prisma } from "@/lib/prisma";
-import { computeSuggestedGaps, type GapFindingSignal } from "./gaps";
+import {
+  mergeQuestionPrompts,
+  parseClinicalQuestionPrompts,
+  resolveClinicalQuestionPrompts,
+} from "./clinical-questions";
+import { groupEvidenceByBucket } from "./evidence-buckets";
+import {
+  computeAssessmentOpportunities,
+  computeSuggestedGaps,
+  groupAssessmentOpportunities,
+  type GapFindingSignal,
+} from "./gaps";
 import { getAllDomains, getDomainById, getDomainsForTheme } from "./registry";
 import { generateDomainEvidenceSummary } from "./synthesize-summary";
 import {
@@ -201,6 +212,10 @@ export async function getDomainDetailForEpisode(
     total: f.total,
     category: f.category,
   }));
+  const reviewEvidence = review?.evidence ?? [];
+  const evidenceItems = buildEvidenceItems(reviewEvidence, findingRefs);
+  const sourceTypes = toSourceTypes(reviewEvidence);
+  const hasAnyEvidence = reviewEvidence.length > 0;
 
   return {
     ...buildSummary(review, domainId, findingSignals),
@@ -209,9 +224,17 @@ export async function getDomainDetailForEpisode(
     evidenceGapNotes: review?.evidenceGapNotes ?? null,
     evidenceSummaryDraft: review?.evidenceSummaryDraft ?? null,
     suggestedQuestionsDraft: review?.suggestedQuestionsDraft ?? null,
+    clinicalQuestionPrompts: resolveClinicalQuestionPrompts(
+      review?.clinicalQuestionPrompts,
+      review?.suggestedQuestionsDraft ?? null,
+    ),
+    assessmentOpportunityGroups: groupAssessmentOpportunities(
+      computeAssessmentOpportunities(domainId, sourceTypes, hasAnyEvidence, findingSignals),
+    ),
+    evidenceBuckets: groupEvidenceByBucket(findings, evidenceItems),
     summaryDraft: review?.summaryDraft ?? null,
     findings,
-    evidence: buildEvidenceItems(review?.evidence ?? [], findingRefs),
+    evidence: evidenceItems,
   };
 }
 
@@ -249,6 +272,9 @@ export async function updateDomainReview(
       ...(input.suggestedQuestionsDraft !== undefined
         ? { suggestedQuestionsDraft: input.suggestedQuestionsDraft }
         : {}),
+      ...(input.clinicalQuestionPrompts !== undefined
+        ? { clinicalQuestionPrompts: input.clinicalQuestionPrompts as unknown as Prisma.InputJsonValue }
+        : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
       ...(input.reviewed === false ? { reviewedAt: null } : {}),
@@ -267,6 +293,9 @@ export async function updateDomainReview(
         : {}),
       ...(input.suggestedQuestionsDraft !== undefined
         ? { suggestedQuestionsDraft: input.suggestedQuestionsDraft }
+        : {}),
+      ...(input.clinicalQuestionPrompts !== undefined
+        ? { clinicalQuestionPrompts: input.clinicalQuestionPrompts as unknown as Prisma.InputJsonValue }
         : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
@@ -368,6 +397,7 @@ export async function generateAndSaveSuggestedQuestions(
   episodeId: string,
   domainId: string,
   clinicianId: string,
+  options?: { replaceAll?: boolean },
 ): Promise<DomainDetail | null> {
   if (!getDomainById(domainId)) return null;
 
@@ -380,21 +410,33 @@ export async function generateAndSaveSuggestedQuestions(
   if (!detail) return null;
 
   const result = await generateSuggestedQuestions(buildQuestionsContextFromDetail(detail));
+  const replaceAll = options?.replaceAll === true;
+  const existing = parseClinicalQuestionPrompts(
+    (
+      await prisma.domainReview.findUnique({
+        where: { episodeId_domainId: { episodeId, domainId } },
+        select: { clinicalQuestionPrompts: true },
+      })
+    )?.clinicalQuestionPrompts,
+  );
+  const resolvedExisting =
+    existing.length > 0 ? existing : detail.clinicalQuestionPrompts;
+  const merged = mergeQuestionPrompts(resolvedExisting, result.questions, replaceAll);
 
   await prisma.domainReview.upsert({
     where: { episodeId_domainId: { episodeId, domainId } },
     create: {
       episodeId,
       domainId,
-      suggestedQuestionsDraft: result.draft,
+      clinicalQuestionPrompts: merged as unknown as Prisma.InputJsonValue,
     },
-    update: { suggestedQuestionsDraft: result.draft },
+    update: { clinicalQuestionPrompts: merged as unknown as Prisma.InputJsonValue },
   });
 
   await logSessionEvent(episodeId, "review.domain_questions_generated", {
     actorType: "clinician",
     actorId: clinicianId,
-    metadata: { domainId, source: result.source },
+    metadata: { domainId, source: result.source, replaceAll },
   });
 
   return getDomainDetailForEpisode(episodeId, domainId);

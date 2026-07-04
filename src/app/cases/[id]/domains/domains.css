@@ -305,13 +305,202 @@
   line-height: 1.5;
 }
 
+.dm-opportunity-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+.dm-opportunity-group-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .dm-opportunity-list {
-  margin: 0 0 0.85rem;
+  margin: 0;
   padding-left: 1.1rem;
   font-size: 0.82rem;
   color: #0369a1;
   line-height: 1.55;
 }
+
+.dm-source-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.dm-source-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 2%, var(--surface));
+}
+.dm-source-group-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+}
+.dm-source-group-summary::-webkit-details-marker {
+  display: none;
+}
+.dm-source-group-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.dm-source-group-desc {
+  margin: 0 0.85rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.dm-question-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.dm-question-card {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.dm-question-card--asked {
+  opacity: 0.82;
+  border-color: color-mix(in srgb, #10b981 35%, var(--border));
+  background: color-mix(in srgb, #10b981 4%, var(--surface));
+}
+.dm-question-card-text {
+  margin: 0 0 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.dm-question-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+.dm-btn--sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+}
+.dm-btn--active {
+  background: color-mix(in srgb, #10b981 14%, var(--surface));
+  border-color: #10b981;
+}
+.dm-link-btn {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4f46e5;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.dm-add-question {
+  margin-top: 0.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed var(--border);
+}
+
+.dm-sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.dm-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.dm-sidebar-domain {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.dm-sidebar-block {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.dm-sidebar-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.dm-synthesis-preview {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.dm-progress-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.dm-progress-step {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.dm-progress-step--done {
+  border-color: color-mix(in srgb, #10b981 40%, var(--border));
+  color: #047857;
+  background: color-mix(in srgb, #10b981 8%, var(--surface));
+}
+.dm-conf--full {
+  display: flex;
+  width: 100%;
+}
+.dm-conf--full .dm-conf-btn {
+  flex: 1;
+}
+.dm-domain-nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.dm-domain-nav-btn {
+  font-size: 0.75rem;
+  text-decoration: none;
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dm-domain-nav-count {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+}
+.dm-domain-nav-spacer {
+  min-height: 1px;
+}
+
 
 /* Sprint 5 — Clinical Intelligence layout */
 .dm-header-row {

@@ -6,14 +6,24 @@ import { generateAndSaveSuggestedQuestions } from "@/lib/domains";
 
 type RouteContext = { params: Promise<{ id: string; domainId: string }> };
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   try {
     const clinicianId = await requireClinicianId();
     const { id, domainId } = await context.params;
     const session = await getSessionForClinician(id, clinicianId);
     if (!session) return jsonNotFound("Episode");
 
-    const domain = await generateAndSaveSuggestedQuestions(id, domainId, clinicianId);
+    let replaceAll = false;
+    try {
+      const body = (await request.json()) as { replaceAll?: boolean };
+      replaceAll = body.replaceAll === true;
+    } catch {
+      // empty body is fine — append by default
+    }
+
+    const domain = await generateAndSaveSuggestedQuestions(id, domainId, clinicianId, {
+      replaceAll,
+    });
     if (!domain) return jsonNotFound("Domain");
 
     return NextResponse.json({ domain });

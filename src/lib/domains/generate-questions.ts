@@ -2,14 +2,15 @@ import { callDomainLlmWithFallback } from "./domain-llm";
 import type { DomainFindingRef } from "./types";
 import {
   buildSuggestQuestionsPrompt,
-  generateTemplateQuestions,
+  generateTemplateQuestionTexts,
+  parseQuestionsFromBulletText,
   type SuggestQuestionsContext,
 } from "./suggest-questions";
 
 export type { SuggestQuestionsContext };
 
 export interface GeneratedSuggestedQuestions {
-  draft: string;
+  questions: string[];
   source: "gemini" | "anthropic" | "template";
   generatedAt: string;
   fallbackReason?: string;
@@ -21,11 +22,16 @@ export async function generateSuggestedQuestions(
   const generatedAt = new Date().toISOString();
   const result = await callDomainLlmWithFallback(
     buildSuggestQuestionsPrompt(ctx),
-    () => generateTemplateQuestions(ctx),
+    () => generateTemplateQuestionTexts(ctx).map((q) => `• ${q}`).join("\n"),
     768,
   );
+  const questions =
+    result.source === "template"
+      ? generateTemplateQuestionTexts(ctx)
+      : parseQuestionsFromBulletText(result.text);
+
   return {
-    draft: result.text,
+    questions,
     source: result.source,
     generatedAt,
     fallbackReason: result.fallbackReason,

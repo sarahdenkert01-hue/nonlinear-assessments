@@ -1,4 +1,5 @@
 import type { EvidenceSourceType } from "./types";
+import { parseQuestionsFromText } from "./clinical-questions";
 
 /** Static interview prompts keyed by domain and finding theme — template fallback. */
 const DOMAIN_QUESTIONS: Record<string, string[]> = {
@@ -112,7 +113,7 @@ export interface SuggestQuestionsContext {
   presentSources: EvidenceSourceType[];
 }
 
-export function generateTemplateQuestions(ctx: SuggestQuestionsContext): string {
+export function generateTemplateQuestionTexts(ctx: SuggestQuestionsContext): string[] {
   const seen = new Set<string>();
   const lines: string[] = [];
 
@@ -120,7 +121,7 @@ export function generateTemplateQuestions(ctx: SuggestQuestionsContext): string 
     const key = q.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      lines.push(`• ${q}`);
+      lines.push(q);
     }
   };
 
@@ -145,16 +146,25 @@ export function generateTemplateQuestions(ctx: SuggestQuestionsContext): string 
   }
 
   if (lines.length === 0) {
-    lines.push(`• What additional context would strengthen understanding of ${ctx.domainLabel}?`);
-    lines.push("• How does this domain show up across settings and over time?");
+    add(`What additional context would strengthen understanding of ${ctx.domainLabel}?`);
+    add("How does this domain show up across settings and over time?");
   }
 
+  return lines;
+}
+
+/** @deprecated — use generateTemplateQuestionTexts */
+export function generateTemplateQuestions(ctx: SuggestQuestionsContext): string {
   return [
     `Suggested clinical questions for ${ctx.domainLabel}.`,
     "These are interview prompts — not diagnostic questions. Ignore any that are not useful.",
     "",
-    ...lines,
+    ...generateTemplateQuestionTexts(ctx).map((q) => `• ${q}`),
   ].join("\n");
+}
+
+export function parseQuestionsFromBulletText(text: string): string[] {
+  return parseQuestionsFromText(text);
 }
 
 export function buildSuggestQuestionsPrompt(ctx: SuggestQuestionsContext): string {

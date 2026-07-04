@@ -44,12 +44,38 @@ export interface DomainSummary {
   hasConfirmedFindings: boolean;
 }
 
+export interface ClinicalQuestionPrompt {
+  id: string;
+  text: string;
+  askedAt: string | null;
+  note: string | null;
+}
+
+export interface GroupedAssessmentOpportunities {
+  category: string;
+  label: string;
+  items: string[];
+}
+
+export interface EvidenceBucketView {
+  id: string;
+  label: string;
+  description: string;
+  itemCount: number;
+  sourceTypes: EvidenceSourceType[];
+  findings: DomainFindingRef[];
+  items: DomainEvidenceItem[];
+}
+
 export interface DomainDetail extends DomainSummary {
   alternativeExplanations: string[];
   clinicalNotes: string | null;
   evidenceGapNotes: string | null;
   evidenceSummaryDraft: string | null;
   suggestedQuestionsDraft: string | null;
+  clinicalQuestionPrompts: ClinicalQuestionPrompt[];
+  assessmentOpportunityGroups: GroupedAssessmentOpportunities[];
+  evidenceBuckets: EvidenceBucketView[];
   summaryDraft: string | null;
   findings: DomainFindingRef[];
   evidence: DomainEvidenceItem[];
@@ -62,6 +88,7 @@ export interface UpdateDomainReviewInput {
   evidenceGapNotes?: string | null;
   evidenceSummaryDraft?: string | null;
   suggestedQuestionsDraft?: string | null;
+  clinicalQuestionPrompts?: ClinicalQuestionPrompt[];
   summaryDraft?: string | null;
   reviewed?: boolean;
 }

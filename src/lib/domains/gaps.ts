@@ -7,15 +7,51 @@ export interface GapFindingSignal {
   category: string | null;
 }
 
-const OPPORTUNITY_MESSAGES: Partial<Record<EvidenceSourceType, string>> = {
-  CLINICIAN_INTERVIEW:
-    "Interview opportunity: explore this domain in a structured clinician interview",
-  CLINICIAN_OBSERVATION:
-    "Observation opportunity: add session observation or behavioral notes",
-  COLLATERAL:
-    "Collateral opportunity: consider partner, family, or school input where appropriate",
-  MANUAL_NOTE:
-    "Note opportunity: capture contextual strengths, history, or observations not in modules",
+export type OpportunityCategory =
+  | "developmental-history"
+  | "interview"
+  | "collateral"
+  | "observation"
+  | "functional-impact"
+  | "other";
+
+export interface AssessmentOpportunity {
+  category: OpportunityCategory;
+  message: string;
+}
+
+export interface GroupedAssessmentOpportunities {
+  category: OpportunityCategory;
+  label: string;
+  items: string[];
+}
+
+export const OPPORTUNITY_GROUP_LABELS: Record<OpportunityCategory, string> = {
+  "developmental-history": "Developmental history",
+  interview: "Interview opportunity",
+  collateral: "Collateral / context",
+  observation: "Observation",
+  "functional-impact": "Functional impact",
+  other: "Other",
+};
+
+const OPPORTUNITY_MESSAGES: Partial<Record<EvidenceSourceType, AssessmentOpportunity>> = {
+  CLINICIAN_INTERVIEW: {
+    category: "interview",
+    message: "Explore this domain in a structured clinician interview",
+  },
+  CLINICIAN_OBSERVATION: {
+    category: "observation",
+    message: "Add session observation or behavioral notes",
+  },
+  COLLATERAL: {
+    category: "collateral",
+    message: "Consider partner, family, or school input where appropriate",
+  },
+  MANUAL_NOTE: {
+    category: "other",
+    message: "Capture contextual strengths, history, or observations not in modules",
+  },
 };
 
 function hasInconsistentFindings(findings: GapFindingSignal[]): boolean {
@@ -24,39 +60,46 @@ function hasInconsistentFindings(findings: GapFindingSignal[]): boolean {
   return Math.max(...rates) - Math.min(...rates) >= 0.4;
 }
 
+function pushUnique(list: AssessmentOpportunity[], item: AssessmentOpportunity) {
+  if (!list.some((o) => o.message === item.message)) list.push(item);
+}
+
 /** Assessment opportunities — prompts to strengthen understanding, not deficiencies. */
-export function computeSuggestedGaps(
+export function computeAssessmentOpportunities(
   domainId: string,
   presentSources: EvidenceSourceType[],
   hasAnyEvidence: boolean,
   findings: GapFindingSignal[] = [],
-): string[] {
+): AssessmentOpportunity[] {
   const domain = getDomainById(domainId);
   if (!domain) return [];
 
-  const opportunities: string[] = [];
+  const opportunities: AssessmentOpportunity[] = [];
   const present = new Set(presentSources);
 
   if (!hasAnyEvidence) {
     if (domainId === "developmental-history") {
-      opportunities.push(
-        "Developmental history opportunity: gather lifespan and childhood presentation evidence",
-      );
+      pushUnique(opportunities, {
+        category: "developmental-history",
+        message: "Gather lifespan and childhood presentation evidence",
+      });
     } else if (domainId === "strengths-protective-factors") {
-      opportunities.push(
-        "Strengths opportunity: document protective factors and compensatory strategies",
-      );
+      pushUnique(opportunities, {
+        category: "other",
+        message: "Document protective factors and compensatory strategies",
+      });
     } else {
-      opportunities.push(
-        "Finding review opportunity: confirm relevant findings or add a clinician note for this domain",
-      );
+      pushUnique(opportunities, {
+        category: "other",
+        message: "Confirm relevant findings in finding review or add a clinician note",
+      });
     }
     return opportunities;
   }
 
   for (const expected of domain.expectedSourceTypes) {
     if (!present.has(expected) && OPPORTUNITY_MESSAGES[expected]) {
-      opportunities.push(OPPORTUNITY_MESSAGES[expected]!);
+      pushUnique(opportunities, OPPORTUNITY_MESSAGES[expected]!);
     }
   }
 
@@ -65,24 +108,77 @@ export function computeSuggestedGaps(
     !present.has("CLINICIAN_INTERVIEW") &&
     (present.has("FINDING") || present.has("CLIENT_SELF_REPORT"))
   ) {
-    opportunities.push(
-      "Developmental history opportunity: consider early presentation and longitudinal course for this domain",
-    );
+    pushUnique(opportunities, {
+      category: "developmental-history",
+      message: "Consider early presentation and longitudinal course for this domain",
+    });
   }
 
   if (!present.has("COLLATERAL") && hasAnyEvidence) {
-    opportunities.push(
-      "Contextual opportunity: collateral input may clarify functional impact and daily patterns",
-    );
+    pushUnique(opportunities, {
+      category: "collateral",
+      message: "Collateral input may clarify functional impact and daily patterns",
+    });
+  }
+
+  if (domainId === "functional-impact" || findings.some((f) => f.category === "functional")) {
+    if (!present.has("COLLATERAL")) {
+      pushUnique(opportunities, {
+        category: "functional-impact",
+        message: "Clarify functional impact across work, home, and relationships",
+      });
+    }
   }
 
   if (hasInconsistentFindings(findings)) {
-    opportunities.push(
-      "Clarification opportunity: supporting findings vary in strength — additional evidence may sharpen the pattern",
-    );
+    pushUnique(opportunities, {
+      category: "other",
+      message: "Supporting findings vary in strength — additional evidence may sharpen the pattern",
+    });
   }
 
   return opportunities;
+}
+
+export function groupAssessmentOpportunities(
+  opportunities: AssessmentOpportunity[],
+): GroupedAssessmentOpportunities[] {
+  const byCategory = new Map<OpportunityCategory, string[]>();
+
+  for (const opp of opportunities) {
+    const list = byCategory.get(opp.category) ?? [];
+    if (!list.includes(opp.message)) list.push(opp.message);
+    byCategory.set(opp.category, list);
+  }
+
+  const order: OpportunityCategory[] = [
+    "developmental-history",
+    "interview",
+    "collateral",
+    "observation",
+    "functional-impact",
+    "other",
+  ];
+
+  return order
+    .filter((cat) => byCategory.has(cat))
+    .map((category) => ({
+      category,
+      label: OPPORTUNITY_GROUP_LABELS[category],
+      items: byCategory.get(category)!,
+    }));
+}
+
+/** Flat messages for hub badges and legacy consumers. */
+export function computeSuggestedGaps(
+  domainId: string,
+  presentSources: EvidenceSourceType[],
+  hasAnyEvidence: boolean,
+  findings: GapFindingSignal[] = [],
+): string[] {
+  return computeAssessmentOpportunities(domainId, presentSources, hasAnyEvidence, findings).map(
+    (o) => o.message,
+  );
 }
 
 export function computeEvidenceCoverage(

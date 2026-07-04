@@ -4,24 +4,20 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { parseApiResponse } from "@/lib/parse-api-response";
-import { computeEvidenceCoverage, sourceTypeLabel } from "@/lib/domains";
-import type { Confidence } from "@/lib/findings/types";
-import type { DomainDetail } from "@/lib/domains/types";
+import { computeEvidenceCoverage } from "@/lib/domains";
+import type { ClinicalQuestionPrompt, DomainDetail, DomainSummary } from "@/lib/domains/types";
+import { createQuestionPrompt } from "@/lib/domains/clinical-questions";
 import "@/features/assessments/components/assessment.css";
 import "../domains.css";
-
-const CONFIDENCE_LEVELS: { value: Confidence | null; label: string }[] = [
-  { value: null, label: "—" },
-  { value: "LOW", label: "Low" },
-  { value: "MODERATE", label: "Moderate" },
-  { value: "HIGH", label: "High" },
-];
+import { ClinicalQuestionCards } from "./clinical-question-cards";
+import { SupportingEvidencePanel } from "./supporting-evidence-panel";
+import { SynthesisSidebar } from "./synthesis-sidebar";
 
 const SECTIONS = [
   { id: "section-know", num: "1", label: "Know" },
-  { id: "section-patterns", num: "2", label: "Patterns" },
-  { id: "section-opportunities", num: "3", label: "Opportunities" },
-  { id: "section-questions", num: "4", label: "Questions" },
+  { id: "section-patterns", num: "2", label: "Pattern" },
+  { id: "section-opportunities", num: "3", label: "Strengthen" },
+  { id: "section-questions", num: "4", label: "Ask" },
   { id: "section-differentials", num: "5", label: "Else" },
   { id: "section-report", num: "6", label: "Report" },
 ] as const;
@@ -43,14 +39,17 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function DomainWorkspaceClient({
   episodeId,
   initialDomain,
+  allDomains,
 }: {
   episodeId: string;
   initialDomain: DomainDetail;
+  allDomains: DomainSummary[];
 }) {
   const [domain, setDomain] = useState(initialDomain);
   const [altText, setAltText] = useState(initialDomain.alternativeExplanations.join("\n"));
   const [differentialDraft, setDifferentialDraft] = useState("");
   const [manualNote, setManualNote] = useState("");
+  const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [generatingSynthesis, setGeneratingSynthesis] = useState(false);
@@ -85,6 +84,14 @@ export function DomainWorkspaceClient({
 
   const debouncedPatch = useDebouncedCallback(patch, 600);
 
+  const patchQuestions = useCallback(
+    (prompts: ClinicalQuestionPrompt[]) => {
+      setDomain((d) => ({ ...d, clinicalQuestionPrompts: prompts }));
+      debouncedPatch({ clinicalQuestionPrompts: prompts });
+    },
+    [debouncedPatch],
+  );
+
   const scrollToSection = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
@@ -116,23 +123,30 @@ export function DomainWorkspaceClient({
     }
   }, [episodeId, domain.domainId]);
 
-  const generateQuestions = useCallback(async () => {
-    setGeneratingQuestions(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/episodes/${episodeId}/domains/${domain.domainId}/suggested-questions`,
-        { method: "POST" },
-      );
-      const data = await parseApiResponse<{ domain?: DomainDetail; error?: string }>(res);
-      if (!res.ok || !data.domain) throw new Error(data.error ?? "Generation failed");
-      setDomain(data.domain);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setGeneratingQuestions(false);
-    }
-  }, [episodeId, domain.domainId]);
+  const generateQuestions = useCallback(
+    async (replaceAll = false) => {
+      setGeneratingQuestions(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/episodes/${episodeId}/domains/${domain.domainId}/suggested-questions`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ replaceAll }),
+          },
+        );
+        const data = await parseApiResponse<{ domain?: DomainDetail; error?: string }>(res);
+        if (!res.ok || !data.domain) throw new Error(data.error ?? "Generation failed");
+        setDomain(data.domain);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Generation failed");
+      } finally {
+        setGeneratingQuestions(false);
+      }
+    },
+    [episodeId, domain.domainId],
+  );
 
   const generateDifferentials = useCallback(async () => {
     setGeneratingDifferentials(true);
@@ -142,10 +156,7 @@ export function DomainWorkspaceClient({
         `/api/episodes/${episodeId}/domains/${domain.domainId}/differential-prompts`,
         { method: "POST" },
       );
-      const data = await parseApiResponse<{
-        draft?: string;
-        error?: string;
-      }>(res);
+      const data = await parseApiResponse<{ draft?: string; error?: string }>(res);
       if (!res.ok || !data.draft) throw new Error(data.error ?? "Generation failed");
       setDifferentialDraft(data.draft);
     } catch (err) {
@@ -178,25 +189,25 @@ export function DomainWorkspaceClient({
     for (const line of lines) {
       if (!existing.has(line)) merged.push(line);
     }
-    const next = merged.join("\n");
-    setAltText(next);
+    setAltText(merged.join("\n"));
     void patch({ alternativeExplanations: merged });
   }, [altText, differentialDraft, patch]);
 
-  const addManualNote = async () => {
-    if (!manualNote.trim()) return;
+  const addManualNote = async (excerpt?: string) => {
+    const text = (excerpt ?? manualNote).trim();
+    if (!text) return;
     setSaving(true);
     setError(null);
     try {
       const res = await fetch(`/api/episodes/${episodeId}/domains/${domain.domainId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ excerpt: manualNote.trim() }),
+        body: JSON.stringify({ excerpt: text }),
       });
       const data = await parseApiResponse<{ domain?: DomainDetail; error?: string }>(res);
       if (!res.ok || !data.domain) throw new Error(data.error ?? "Failed");
       setDomain(data.domain);
-      setManualNote("");
+      if (!excerpt) setManualNote("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -204,30 +215,34 @@ export function DomainWorkspaceClient({
     }
   };
 
+  const addManualQuestion = () => {
+    const text = newQuestion.trim();
+    if (!text) return;
+    patchQuestions([...domain.clinicalQuestionPrompts, createQuestionPrompt(text)]);
+    setNewQuestion("");
+  };
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
-
       if (e.key === "?") {
         e.preventDefault();
         setShortcutsOpen((v) => !v);
         return;
       }
-
       const num = Number(e.key);
       if (num >= 1 && num <= 6) {
         e.preventDefault();
         scrollToSection(SECTIONS[num - 1]!.id);
         return;
       }
-
       const key = e.key.toLowerCase();
       if (key === "g") {
         e.preventDefault();
         void generateSynthesis();
       } else if (key === "q") {
         e.preventDefault();
-        void generateQuestions();
+        void generateQuestions(false);
       } else if (key === "d") {
         e.preventDefault();
         void generateDifferentials();
@@ -236,7 +251,6 @@ export function DomainWorkspaceClient({
         copySynthesisToReport();
       }
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
@@ -270,24 +284,11 @@ export function DomainWorkspaceClient({
               </p>
               <h1 className="assessment-title">Clinical Synthesis</h1>
               <p className="assessment-subtitle">
-                Six questions to support your reasoning — you remain responsible for interpretation.
+                Six questions to support actionable clinical reasoning — you remain responsible
+                for interpretation.
               </p>
             </div>
             <div className="dm-header-actions">
-              {!domain.reviewedAt ? (
-                <button
-                  type="button"
-                  className="dm-btn dm-btn--primary"
-                  onClick={() => void patch({ reviewed: true })}
-                  disabled={saving}
-                >
-                  Mark reviewed
-                </button>
-              ) : (
-                <span className="dm-badge dm-badge--reviewed">
-                  Reviewed {new Date(domain.reviewedAt).toLocaleDateString()}
-                </span>
-              )}
               <div className="dm-shortcuts-wrap" ref={shortcutsRef}>
                 <button
                   type="button"
@@ -312,7 +313,7 @@ export function DomainWorkspaceClient({
                 )}
               </div>
               <Link href={`/cases/${episodeId}/domains`} className="dm-btn">
-                ← Domains
+                All domains
               </Link>
             </div>
           </div>
@@ -323,10 +324,6 @@ export function DomainWorkspaceClient({
 
           <nav className="dm-jump-nav" aria-label="Section navigation">
             <span className="dm-jump-domain">{domain.label}</span>
-            <span className="dm-jump-stat">
-              {domain.confirmedFindingCount} finding
-              {domain.confirmedFindingCount === 1 ? "" : "s"}
-            </span>
             {coverage.expected > 0 && (
               <span className="dm-jump-stat">
                 Coverage {coverage.percent}% ({coverage.present}/{coverage.expected})
@@ -346,103 +343,22 @@ export function DomainWorkspaceClient({
 
           <div className="dm-workspace-layout">
             <div className="dm-reasoning-column">
-              {/* §1 What do we know? */}
-              <section id="section-know" className="dm-panel dm-section">
-                <p className="dm-question-label">1. What do we know?</p>
-                <h2 className="dm-panel-title">Confirmed evidence</h2>
-                <p className="dm-panel-hint">
-                  Descriptive inventory only — no interpretation yet.
-                </p>
+              <SupportingEvidencePanel
+                domainId={domain.domainId}
+                confirmedFindingCount={domain.confirmedFindingCount}
+                evidenceCount={domain.evidenceCount}
+                sourceTypes={domain.sourceTypes}
+                evidenceBuckets={domain.evidenceBuckets}
+              />
 
-                <div className="dm-know-stats">
-                  <div className="dm-know-stat">
-                    <span className="dm-know-stat-value">{domain.confirmedFindingCount}</span>
-                    <span className="dm-know-stat-label">Confirmed findings</span>
-                  </div>
-                  <div className="dm-know-stat">
-                    <span className="dm-know-stat-value">{domain.evidenceCount}</span>
-                    <span className="dm-know-stat-label">Evidence items</span>
-                  </div>
-                  {coverage.expected > 0 && (
-                    <div className="dm-know-stat">
-                      <span className="dm-know-stat-value">{coverage.percent}%</span>
-                      <span className="dm-know-stat-label">Source coverage</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="dm-row-meta" style={{ marginBottom: "0.85rem" }}>
-                  {domain.sourceTypes.length === 0 ? (
-                    <span className="dm-badge">No sources yet</span>
-                  ) : (
-                    domain.sourceTypes.map((s) => (
-                      <span key={s} className="dm-badge">
-                        {sourceTypeLabel(s)}
-                      </span>
-                    ))
-                  )}
-                </div>
-
-                {domain.findings.length === 0 ? (
-                  <p className="dm-panel-hint" style={{ marginBottom: "0.75rem" }}>
-                    No confirmed findings linked. Confirm in finding review first.
-                  </p>
-                ) : (
-                  <div className="dm-finding-list">
-                    {domain.findings.map((f) => (
-                      <details key={f.id} className="dm-finding-expand">
-                        <summary className="dm-finding-expand-summary">
-                          <span className="dm-finding-label">{f.label}</span>
-                          <span className="dm-finding-meta">
-                            {f.hits}/{f.total} indicators · {f.evidenceCount} item
-                            {f.evidenceCount === 1 ? "" : "s"}
-                          </span>
-                        </summary>
-                        {f.evidence.length === 0 ? (
-                          <p className="dm-panel-hint" style={{ margin: "0.5rem 0.85rem 0.75rem" }}>
-                            No item-level evidence.
-                          </p>
-                        ) : (
-                          <ul className="dm-evidence-items">
-                            {f.evidence.map((e) => (
-                              <li key={e.id} className="dm-evidence-item">
-                                <div className="dm-evidence-q">{e.text}</div>
-                                <div className="dm-evidence-a">{e.answer || "—"}</div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </details>
-                    ))}
-                  </div>
-                )}
-
-                <label className="dm-field-label">Clinician confidence</label>
-                <div className="dm-conf" role="group" aria-label="Clinician confidence">
-                  {CONFIDENCE_LEVELS.map((opt) => (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      className={`dm-conf-btn${domain.confidence === opt.value ? " dm-conf-btn--active" : ""}`}
-                      onClick={() => void patch({ confidence: opt.value })}
-                      disabled={saving}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* §2 What patterns are emerging? */}
               <section id="section-patterns" className="dm-panel dm-section">
-                <p className="dm-question-label">2. What patterns are emerging?</p>
+                <p className="dm-question-label">2. What pattern is emerging?</p>
                 <div className="dm-panel-head">
                   <h2 className="dm-panel-title">Clinical synthesis</h2>
                   <span className="dm-ai-badge">AI Draft — Review and edit before using.</span>
                 </div>
                 <p className="dm-panel-hint">
-                  AI-assisted synthesis of themes, functional impact, and strengths. Does not
-                  populate your report automatically.
+                  AI-assisted synthesis of themes, functional impact, and strengths.
                 </p>
                 <textarea
                   id="clinical-synthesis"
@@ -467,19 +383,27 @@ export function DomainWorkspaceClient({
                 </div>
               </section>
 
-              {/* §3 What don't we know yet? */}
               <section id="section-opportunities" className="dm-panel dm-section">
-                <p className="dm-question-label">3. What don&apos;t we know yet?</p>
+                <p className="dm-question-label">
+                  3. What information would strengthen this formulation?
+                </p>
                 <h2 className="dm-panel-title">Assessment opportunities</h2>
                 <p className="dm-panel-hint">
-                  Opportunities to strengthen understanding — not deficiencies.
+                  Areas where additional information may strengthen confidence in this formulation.
                 </p>
-                {domain.suggestedGaps.length > 0 ? (
-                  <ul className="dm-opportunity-list">
-                    {domain.suggestedGaps.map((g) => (
-                      <li key={g}>{g}</li>
+                {domain.assessmentOpportunityGroups.length > 0 ? (
+                  <div className="dm-opportunity-groups">
+                    {domain.assessmentOpportunityGroups.map((group) => (
+                      <div key={group.category} className="dm-opportunity-group">
+                        <h3 className="dm-opportunity-group-title">{group.label}</h3>
+                        <ul className="dm-opportunity-list">
+                          {group.items.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="dm-panel-hint" style={{ marginBottom: "0.75rem" }}>
                     No additional opportunities identified at this time.
@@ -514,7 +438,7 @@ export function DomainWorkspaceClient({
                     <button
                       type="button"
                       className="dm-btn"
-                      onClick={addManualNote}
+                      onClick={() => addManualNote()}
                       disabled={saving || !manualNote.trim()}
                     >
                       Add note
@@ -523,43 +447,68 @@ export function DomainWorkspaceClient({
                 </div>
               </section>
 
-              {/* §4 What should I ask next? */}
               <section id="section-questions" className="dm-panel dm-section">
                 <p className="dm-question-label">4. What should I ask next?</p>
                 <h2 className="dm-panel-title">Suggested clinical questions</h2>
                 <p className="dm-panel-hint">
-                  Interview prompts to deepen understanding. Not diagnostic — ignore any that are
+                  Interview prompts to deepen understanding — not diagnostic. Ignore any that are
                   not useful.
                 </p>
-                <textarea
-                  id="suggested-questions"
-                  className="assessment-notes"
-                  style={{ minHeight: "7rem" }}
-                  value={domain.suggestedQuestionsDraft ?? ""}
-                  onChange={(e) => {
-                    setDomain((d) => ({ ...d, suggestedQuestionsDraft: e.target.value }));
-                    debouncedPatch({ suggestedQuestionsDraft: e.target.value || null });
-                  }}
-                  placeholder="Generate or write interview prompts…"
+
+                <ClinicalQuestionCards
+                  prompts={domain.clinicalQuestionPrompts}
+                  saving={saving}
+                  onChange={patchQuestions}
+                  onAddToEvidence={addManualNote}
                 />
-                <div className="dm-actions">
-                  <button
-                    type="button"
-                    className="dm-btn dm-btn--primary"
-                    onClick={generateQuestions}
-                    disabled={generatingQuestions || saving}
-                  >
-                    {generatingQuestions ? "Generating…" : "Generate suggested questions"}
-                  </button>
+
+                <div className="dm-add-question">
+                  <label className="dm-field-label" htmlFor="new-question">
+                    Add your own question
+                  </label>
+                  <textarea
+                    id="new-question"
+                    className="assessment-notes"
+                    style={{ minHeight: "2.5rem" }}
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                    placeholder="Write a custom interview prompt…"
+                  />
+                  <div className="dm-actions">
+                    <button
+                      type="button"
+                      className="dm-btn"
+                      onClick={addManualQuestion}
+                      disabled={saving || !newQuestion.trim()}
+                    >
+                      Add question
+                    </button>
+                    <button
+                      type="button"
+                      className="dm-btn dm-btn--primary"
+                      onClick={() => generateQuestions(false)}
+                      disabled={generatingQuestions || saving}
+                    >
+                      {generatingQuestions ? "Generating…" : "Generate suggested questions"}
+                    </button>
+                    <button
+                      type="button"
+                      className="dm-btn"
+                      onClick={() => generateQuestions(true)}
+                      disabled={generatingQuestions || saving}
+                      title="Replace all questions including edited and marked-asked"
+                    >
+                      Replace all
+                    </button>
+                  </div>
                 </div>
               </section>
 
-              {/* §5 What else could explain this? */}
               <section id="section-differentials" className="dm-panel dm-section">
                 <p className="dm-question-label">5. What else could explain this?</p>
-                <h2 className="dm-panel-title">Differential considerations</h2>
+                <h2 className="dm-panel-title">Other explanatory factors</h2>
                 <p className="dm-panel-hint">
-                  Alternative explanations you are weighing — clinician-owned.
+                  Alternative explanations as clinical reasoning prompts — not diagnoses.
                 </p>
                 <textarea
                   id="alt-exp"
@@ -568,7 +517,9 @@ export function DomainWorkspaceClient({
                   value={altText}
                   onChange={(e) => setAltText(e.target.value)}
                   onBlur={commitAlternatives}
-                  placeholder="One consideration per line…"
+                  placeholder={
+                    "Could trauma contribute to this pattern?\nCould sleep disruption amplify this presentation?"
+                  }
                 />
 
                 {differentialDraft && (
@@ -582,7 +533,7 @@ export function DomainWorkspaceClient({
                       style={{ minHeight: "4rem" }}
                       value={differentialDraft}
                       onChange={(e) => setDifferentialDraft(e.target.value)}
-                      aria-label="Ephemeral differential prompts"
+                      aria-label="Ephemeral explanatory factor prompts"
                     />
                     <div className="dm-actions">
                       <button
@@ -591,7 +542,7 @@ export function DomainWorkspaceClient({
                         onClick={copyDifferentialDraftToList}
                         disabled={saving || !differentialDraft.trim()}
                       >
-                        Copy to differential list
+                        Copy to explanatory factors
                       </button>
                       <button
                         type="button"
@@ -636,43 +587,25 @@ export function DomainWorkspaceClient({
               </details>
             </div>
 
-            {/* §6 What belongs in my report? */}
-            <aside id="section-report" className="dm-report-column">
-              <section className="dm-panel dm-section dm-report-panel">
-                <p className="dm-question-label">6. What belongs in my report?</p>
-                <h2 className="dm-panel-title">Report draft</h2>
-                <p className="dm-panel-hint">
-                  Clinician-owned report language. Never overwritten automatically.
-                </p>
-                <textarea
-                  id="summary-draft"
-                  className="assessment-report-editor"
-                  style={{ minHeight: "10rem" }}
-                  value={domain.summaryDraft ?? ""}
-                  onChange={(e) => {
-                    setDomain((d) => ({ ...d, summaryDraft: e.target.value }));
-                    debouncedPatch({ summaryDraft: e.target.value || null });
-                  }}
-                  placeholder="Editable domain summary for the report…"
-                />
-                <div className="dm-actions">
-                  <button
-                    type="button"
-                    className="dm-btn dm-btn--primary"
-                    onClick={copySynthesisToReport}
-                    disabled={saving || !domain.evidenceSummaryDraft?.trim()}
-                  >
-                    Copy clinical synthesis → report draft
-                  </button>
-                </div>
-                {domain.summaryDraft?.trim() ? (
-                  <div className="dm-report-preview" aria-label="Report preview">
-                    <div className="dm-report-preview-label">Preview</div>
-                    <div className="dm-report-preview-body">{domain.summaryDraft}</div>
-                  </div>
-                ) : null}
-              </section>
-            </aside>
+            <SynthesisSidebar
+              episodeId={episodeId}
+              domain={domain}
+              allDomains={allDomains}
+              saving={saving}
+              onPatch={(body) => {
+                if ("summaryDraft" in body) {
+                  setDomain((d) => ({
+                    ...d,
+                    summaryDraft: (body.summaryDraft as string | null) ?? null,
+                  }));
+                  debouncedPatch(body);
+                  return;
+                }
+                void patch(body);
+              }}
+              onCopySynthesisToReport={copySynthesisToReport}
+              onScrollToSynthesis={() => scrollToSection("section-patterns")}
+            />
           </div>
         </div>
       </div>
