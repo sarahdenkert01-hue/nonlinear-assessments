@@ -114,6 +114,145 @@
   display: none;
 }
 
+/* Domain workspace — Clinical Synthesis */
+.dm-overview {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: color-mix(in srgb, var(--surface) 92%, var(--foreground) 8%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+.dm-overview-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+.dm-overview-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 36rem;
+}
+.dm-overview-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.dm-overview-stats strong {
+  color: var(--foreground);
+}
+.dm-overview-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.dm-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.dm-panel-head .dm-panel-title {
+  margin: 0;
+}
+.dm-ai-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  color: #5b21b6;
+  background: color-mix(in srgb, #8b5cf6 14%, var(--surface));
+}
+
+.dm-finding-expand {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 2%, var(--surface));
+}
+.dm-finding-expand-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+}
+.dm-finding-expand-summary::-webkit-details-marker {
+  display: none;
+}
+.dm-evidence-items {
+  margin: 0;
+  padding: 0 0.85rem 0.75rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dm-evidence-item {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.dm-evidence-q {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.dm-evidence-a {
+  margin-top: 0.25rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.dm-add-note {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+
+.dm-report-preview {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 3%, var(--surface));
+}
+.dm-report-preview-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.dm-report-preview-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--foreground);
+  white-space: pre-wrap;
+}
+
 /* Domain workspace */
 .dm-panel {
   background: var(--surface);

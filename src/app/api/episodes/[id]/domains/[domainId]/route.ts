@@ -71,6 +71,13 @@ export async function PATCH(request: Request, context: RouteContext) {
           : null;
     }
 
+    if ("evidenceSummaryDraft" in body) {
+      input.evidenceSummaryDraft =
+        typeof body.evidenceSummaryDraft === "string" && body.evidenceSummaryDraft.trim()
+          ? body.evidenceSummaryDraft.trim()
+          : null;
+    }
+
     if ("summaryDraft" in body) {
       input.summaryDraft =
         typeof body.summaryDraft === "string" && body.summaryDraft.trim()

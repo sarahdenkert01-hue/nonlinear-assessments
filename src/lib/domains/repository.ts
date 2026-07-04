@@ -1,8 +1,12 @@
 import type { Prisma } from "@prisma/client";
+import { QUESTIONS } from "@/features/assessments/data/questions";
+import { isAssessmentQuestion } from "@/features/assessments/types";
 import { logSessionEvent } from "@/lib/audit";
+import { responsesToAnswers } from "@/lib/episodes/responses";
 import { prisma } from "@/lib/prisma";
-import { computeSuggestedGaps } from "./gaps";
+import { computeSuggestedGaps, type GapFindingSignal } from "./gaps";
 import { getAllDomains, getDomainById, getDomainsForTheme } from "./registry";
+import { generateDomainEvidenceSummary } from "./synthesize-summary";
 import type {
   DomainDetail,
   DomainEvidenceItem,
@@ -14,13 +18,21 @@ import type {
 
 const CONFIRMED_STATUSES = ["ACCEPTED", "EDITED"] as const;
 
+const QUESTION_TEXT: Map<string, string> = new Map(
+  QUESTIONS.filter(isAssessmentQuestion).map((q) => [q.id, q.text]),
+);
+
 type ReviewWithEvidence = Prisma.DomainReviewGetPayload<{ include: { evidence: true } }>;
 
 function toSourceTypes(evidence: { sourceType: EvidenceSourceType }[]): EvidenceSourceType[] {
   return [...new Set(evidence.map((e) => e.sourceType))];
 }
 
-function buildSummary(review: ReviewWithEvidence | null, domainId: string): DomainSummary {
+function buildSummary(
+  review: ReviewWithEvidence | null,
+  domainId: string,
+  findingSignals: GapFindingSignal[] = [],
+): DomainSummary {
   const domain = getDomainById(domainId)!;
   const evidence = review?.evidence ?? [];
   const findingEvidence = evidence.filter((e) => e.findingId);
@@ -34,7 +46,7 @@ function buildSummary(review: ReviewWithEvidence | null, domainId: string): Doma
     confirmedFindingCount: findingEvidence.length,
     evidenceCount: evidence.length,
     sourceTypes,
-    suggestedGaps: computeSuggestedGaps(domainId, sourceTypes, hasAnyEvidence),
+    suggestedGaps: computeSuggestedGaps(domainId, sourceTypes, hasAnyEvidence, findingSignals),
     confidence: review?.confidence ?? null,
     reviewedAt: review?.reviewedAt?.toISOString() ?? null,
     hasConfirmedFindings: findingEvidence.length > 0,
@@ -100,12 +112,23 @@ export async function listDomainSummariesForEpisode(
   );
 }
 
-async function loadFindingRefs(findingIds: string[]): Promise<Map<string, DomainFindingRef>> {
+async function loadFindingRefs(
+  episodeId: string,
+  findingIds: string[],
+): Promise<Map<string, DomainFindingRef>> {
   if (findingIds.length === 0) return new Map();
+
+  const episode = await prisma.assessmentEpisode.findUnique({
+    where: { id: episodeId },
+    include: { modules: { include: { responses: true } } },
+  });
+  const clientModule =
+    episode?.modules.find((m) => m.audience === "CLIENT") ?? episode?.modules[0];
+  const answers = clientModule ? responsesToAnswers(clientModule.responses) : {};
 
   const findings = await prisma.finding.findMany({
     where: { id: { in: findingIds } },
-    include: { _count: { select: { evidence: true } } },
+    include: { evidence: true, _count: { select: { evidence: true } } },
   });
 
   return new Map(
@@ -115,10 +138,20 @@ async function loadFindingRefs(findingIds: string[]): Promise<Map<string, Domain
         id: f.id,
         code: f.code,
         label: f.label,
+        category: f.category,
         status: f.status,
         hits: f.hits,
         total: f.total,
         evidenceCount: f._count.evidence,
+        evidence: f.evidence.map((e) => {
+          const itemId = e.itemId ?? "";
+          return {
+            id: e.id,
+            itemId,
+            text: QUESTION_TEXT.get(itemId) ?? itemId,
+            answer: answers[itemId] ?? "",
+          };
+        }),
       },
     ]),
   );
@@ -152,20 +185,25 @@ export async function getDomainDetailForEpisode(
     include: { evidence: true },
   });
 
-  const summary = buildSummary(review, domainId);
   const findingIds = (review?.evidence ?? [])
     .map((e) => e.findingId)
     .filter((id): id is string => Boolean(id));
-  const findingRefs = await loadFindingRefs(findingIds);
+  const findingRefs = await loadFindingRefs(episodeId, findingIds);
   const findings = findingIds
     .map((id) => findingRefs.get(id))
     .filter((f): f is DomainFindingRef => Boolean(f));
+  const findingSignals = findings.map((f) => ({
+    hits: f.hits,
+    total: f.total,
+    category: f.category,
+  }));
 
   return {
-    ...summary,
+    ...buildSummary(review, domainId, findingSignals),
     alternativeExplanations: review?.alternativeExplanations ?? [],
     clinicalNotes: review?.clinicalNotes ?? null,
     evidenceGapNotes: review?.evidenceGapNotes ?? null,
+    evidenceSummaryDraft: review?.evidenceSummaryDraft ?? null,
     summaryDraft: review?.summaryDraft ?? null,
     findings,
     evidence: buildEvidenceItems(review?.evidence ?? [], findingRefs),
@@ -200,6 +238,9 @@ export async function updateDomainReview(
       ...(input.evidenceGapNotes !== undefined
         ? { evidenceGapNotes: input.evidenceGapNotes }
         : {}),
+      ...(input.evidenceSummaryDraft !== undefined
+        ? { evidenceSummaryDraft: input.evidenceSummaryDraft }
+        : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
       ...(input.reviewed === false ? { reviewedAt: null } : {}),
@@ -212,6 +253,9 @@ export async function updateDomainReview(
       ...(input.clinicalNotes !== undefined ? { clinicalNotes: input.clinicalNotes } : {}),
       ...(input.evidenceGapNotes !== undefined
         ? { evidenceGapNotes: input.evidenceGapNotes }
+        : {}),
+      ...(input.evidenceSummaryDraft !== undefined
+        ? { evidenceSummaryDraft: input.evidenceSummaryDraft }
         : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
@@ -259,6 +303,51 @@ export async function addManualDomainEvidence(
     actorType: "clinician",
     actorId: clinicianId,
     metadata: { domainId, sourceType: "MANUAL_NOTE" },
+  });
+
+  return getDomainDetailForEpisode(episodeId, domainId);
+}
+
+export async function generateAndSaveEvidenceSummary(
+  episodeId: string,
+  domainId: string,
+  clinicianId: string,
+): Promise<DomainDetail | null> {
+  if (!getDomainById(domainId)) return null;
+
+  const episode = await prisma.assessmentEpisode.findFirst({
+    where: { id: episodeId, clinicianId },
+  });
+  if (!episode) return null;
+
+  const detail = await getDomainDetailForEpisode(episodeId, domainId);
+  if (!detail) return null;
+
+  const supplementalEvidence = detail.evidence.filter(
+    (e) => e.sourceType !== "FINDING" && Boolean(e.excerpt?.trim()),
+  );
+
+  const result = await generateDomainEvidenceSummary({
+    domainLabel: detail.label,
+    domainDescription: detail.description,
+    findings: detail.findings,
+    supplementalEvidence,
+  });
+
+  await prisma.domainReview.upsert({
+    where: { episodeId_domainId: { episodeId, domainId } },
+    create: {
+      episodeId,
+      domainId,
+      evidenceSummaryDraft: result.draft,
+    },
+    update: { evidenceSummaryDraft: result.draft },
+  });
+
+  await logSessionEvent(episodeId, "review.domain_evidence_summary_generated", {
+    actorType: "clinician",
+    actorId: clinicianId,
+    metadata: { domainId, source: result.source },
   });
 
   return getDomainDetailForEpisode(episodeId, domainId);

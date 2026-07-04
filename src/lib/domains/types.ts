@@ -1,4 +1,4 @@
-import type { Confidence } from "@/lib/findings/types";
+import type { Confidence, FindingEvidenceItem } from "@/lib/findings/types";
 
 export type EvidenceSourceType =
   | "CLIENT_SELF_REPORT"
@@ -13,10 +13,12 @@ export interface DomainFindingRef {
   id: string;
   code: string;
   label: string;
+  category: string | null;
   status: string;
   hits: number;
   total: number;
   evidenceCount: number;
+  evidence: FindingEvidenceItem[];
 }
 
 export interface DomainEvidenceItem {
@@ -46,6 +48,7 @@ export interface DomainDetail extends DomainSummary {
   alternativeExplanations: string[];
   clinicalNotes: string | null;
   evidenceGapNotes: string | null;
+  evidenceSummaryDraft: string | null;
   summaryDraft: string | null;
   findings: DomainFindingRef[];
   evidence: DomainEvidenceItem[];
@@ -56,6 +59,7 @@ export interface UpdateDomainReviewInput {
   alternativeExplanations?: string[];
   clinicalNotes?: string | null;
   evidenceGapNotes?: string | null;
+  evidenceSummaryDraft?: string | null;
   summaryDraft?: string | null;
   reviewed?: boolean;
 }

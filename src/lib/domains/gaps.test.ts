@@ -14,7 +14,25 @@ describe("computeSuggestedGaps", () => {
 
   it("suggests missing interview when only findings present", () => {
     const gaps = computeSuggestedGaps("executive-function", ["FINDING"], true);
-    expect(gaps).toContain("No clinician interview evidence linked yet");
+    expect(gaps.some((g) => /interview/i.test(g))).toBe(true);
+  });
+
+  it("suggests developmental history when only screener evidence present", () => {
+    const gaps = computeSuggestedGaps("executive-function", ["FINDING"], true);
+    expect(gaps.some((g) => /developmental|childhood/i.test(g))).toBe(true);
+  });
+
+  it("suggests inconsistency when finding strength varies", () => {
+    const gaps = computeSuggestedGaps(
+      "executive-function",
+      ["FINDING"],
+      true,
+      [
+        { hits: 4, total: 4, category: null },
+        { hits: 1, total: 4, category: null },
+      ],
+    );
+    expect(gaps.some((g) => /vary|inconsistent|strength/i.test(g))).toBe(true);
   });
 
   it("does not imply diagnosis", () => {

@@ -29,6 +29,7 @@ export function DomainWorkspaceClient({
   const [manualNote, setManualNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -63,6 +64,31 @@ export function DomainWorkspaceClient({
     void patch({ alternativeExplanations: next });
   };
 
+  const generateEvidenceSummary = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/episodes/${episodeId}/domains/${domain.domainId}/evidence-summary`,
+        { method: "POST" },
+      );
+      const data = await parseApiResponse<{ domain?: DomainDetail; error?: string }>(res);
+      if (!res.ok || !data.domain) throw new Error(data.error ?? "Generation failed");
+      setDomain(data.domain);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const copyToReportDraft = () => {
+    const next = domain.evidenceSummaryDraft?.trim();
+    if (!next) return;
+    setDomain((d) => ({ ...d, summaryDraft: next }));
+    void patch({ summaryDraft: next });
+  };
+
   const addManualNote = async () => {
     if (!manualNote.trim()) return;
     setSaving(true);
@@ -93,98 +119,229 @@ export function DomainWorkspaceClient({
             {" · "}
             <Link href={`/cases/${episodeId}/assessment`}>Finding review</Link>
           </p>
-          <h1 className="assessment-title">{domain.label}</h1>
-          <p className="assessment-subtitle">{domain.description}</p>
+          <h1 className="assessment-title">Clinical Synthesis</h1>
+          <p className="assessment-subtitle">
+            Synthesize confirmed findings into an understanding of this clinical domain. Your
+            judgment and report language remain separate from AI-assisted evidence summaries.
+          </p>
         </header>
 
         <div className="dm-wrap">
           {error && <div className="assessment-alert">{error}</div>}
 
+          {/* 1. Domain overview (sticky) */}
+          <div className="dm-overview">
+            <div className="dm-overview-main">
+              <h2 className="dm-overview-title">{domain.label}</h2>
+              <p className="dm-overview-desc">{domain.description}</p>
+            </div>
+            <div className="dm-overview-stats">
+              <span>
+                <strong>{domain.confirmedFindingCount}</strong> confirmed finding
+                {domain.confirmedFindingCount === 1 ? "" : "s"}
+              </span>
+              <span>
+                <strong>{domain.evidenceCount}</strong> evidence item
+                {domain.evidenceCount === 1 ? "" : "s"}
+              </span>
+              {domain.sourceTypes.length > 0 ? (
+                <span className="dm-overview-sources">
+                  {domain.sourceTypes.map((s) => (
+                    <span key={s} className="dm-badge">
+                      {sourceTypeLabel(s)}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="dm-badge">No sources yet</span>
+              )}
+              {domain.suggestedGaps.length > 0 && (
+                <span className="dm-badge dm-badge--gap">
+                  {domain.suggestedGaps.length} gap prompt
+                  {domain.suggestedGaps.length === 1 ? "" : "s"}
+                </span>
+              )}
+              {domain.confidence && (
+                <span className="dm-badge">Confidence: {domain.confidence.toLowerCase()}</span>
+              )}
+            </div>
+          </div>
+
+          {/* 2. Supporting findings */}
           <div className="dm-panel">
-            <h2 className="dm-panel-title">Confirmed findings</h2>
+            <h2 className="dm-panel-title">Supporting findings</h2>
             <p className="dm-panel-hint">
-              Theme-level finding names are preserved from screener review. Each links evidence
-              from the original module.
+              Theme-level finding names from screener review. Expand to see item-level evidence.
             </p>
             {domain.findings.length === 0 ? (
               <p className="dm-panel-hint" style={{ marginBottom: 0 }}>
-                No confirmed findings linked yet. Confirm findings in screener review first.
+                No confirmed findings linked yet. Confirm findings in finding review first.
               </p>
             ) : (
-              <ul className="dm-finding-list">
+              <div className="dm-finding-list">
                 {domain.findings.map((f) => (
-                  <li key={f.id} className="dm-finding-item">
-                    <div className="dm-finding-label">{f.label}</div>
-                    <div className="dm-finding-meta">
-                      {f.hits} of {f.total} indicators · {f.evidenceCount} evidence item
-                      {f.evidenceCount === 1 ? "" : "s"}
-                    </div>
-                  </li>
+                  <details key={f.id} className="dm-finding-expand">
+                    <summary className="dm-finding-expand-summary">
+                      <span className="dm-finding-label">{f.label}</span>
+                      <span className="dm-finding-meta">
+                        {f.hits} of {f.total} indicators · {f.evidenceCount} evidence item
+                        {f.evidenceCount === 1 ? "" : "s"}
+                      </span>
+                    </summary>
+                    {f.evidence.length === 0 ? (
+                      <p className="dm-panel-hint" style={{ margin: "0.5rem 0 0" }}>
+                        No item-level evidence recorded.
+                      </p>
+                    ) : (
+                      <ul className="dm-evidence-items">
+                        {f.evidence.map((e) => (
+                          <li key={e.id} className="dm-evidence-item">
+                            <div className="dm-evidence-q">{e.text}</div>
+                            <div className="dm-evidence-a">{e.answer || "—"}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </details>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
 
+          {/* 3. Evidence summary (AI-assisted) */}
           <div className="dm-panel">
-            <h2 className="dm-panel-title">Evidence sources</h2>
-            <div className="dm-row-meta" style={{ marginBottom: "0.75rem" }}>
-              {domain.sourceTypes.length === 0 ? (
-                <span className="dm-badge">None yet</span>
-              ) : (
-                domain.sourceTypes.map((s) => (
-                  <span key={s} className="dm-badge">
-                    {sourceTypeLabel(s)}
-                  </span>
-                ))
-              )}
+            <div className="dm-panel-head">
+              <h2 className="dm-panel-title">Evidence summary</h2>
+              <span className="dm-ai-badge">AI Draft — Review and edit before using.</span>
             </div>
-            {domain.evidence
-              .filter((e) => e.excerpt)
-              .map((e) => (
-                <div key={e.id} className="dm-finding-item" style={{ marginBottom: "0.5rem" }}>
-                  <div className="dm-finding-meta">{sourceTypeLabel(e.sourceType)}</div>
-                  <div className="dm-finding-label" style={{ fontWeight: 500 }}>
-                    {e.excerpt}
-                  </div>
-                </div>
-              ))}
+            <p className="dm-panel-hint">
+              AI-assisted synthesis of supporting evidence. This does not populate your report
+              automatically.
+            </p>
+            <textarea
+              id="evidence-summary"
+              className="assessment-report-editor"
+              style={{ minHeight: "7rem" }}
+              value={domain.evidenceSummaryDraft ?? ""}
+              onChange={(e) => {
+                setDomain((d) => ({ ...d, evidenceSummaryDraft: e.target.value }));
+                debouncedPatch({ evidenceSummaryDraft: e.target.value || null });
+              }}
+              placeholder="Generate or write an evidence summary for clinician review…"
+            />
+            <div className="dm-actions">
+              <button
+                type="button"
+                className="dm-btn dm-btn--primary"
+                onClick={generateEvidenceSummary}
+                disabled={generating || saving}
+              >
+                {generating ? "Generating…" : "Generate evidence summary"}
+              </button>
+              <button
+                type="button"
+                className="dm-btn"
+                onClick={copyToReportDraft}
+                disabled={saving || !domain.evidenceSummaryDraft?.trim()}
+              >
+                Copy to report draft
+              </button>
+            </div>
           </div>
 
-          {(domain.suggestedGaps.length > 0 || domain.evidenceGapNotes) && (
-            <div className="dm-panel">
-              <h2 className="dm-panel-title">Evidence gaps</h2>
-              <p className="dm-panel-hint">
-                Documentation prompts only — not diagnostic conclusions.
+          {/* 4. Evidence gaps */}
+          <div className="dm-panel">
+            <h2 className="dm-panel-title">Evidence gaps</h2>
+            <p className="dm-panel-hint">
+              Documentation prompts only — not diagnostic conclusions.
+            </p>
+            {domain.suggestedGaps.length > 0 ? (
+              <ul className="dm-gap-list">
+                {domain.suggestedGaps.map((g) => (
+                  <li key={g}>{g}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="dm-panel-hint" style={{ marginBottom: "0.75rem" }}>
+                No gap prompts for this domain at this time.
               </p>
-              {domain.suggestedGaps.length > 0 && (
-                <ul className="dm-gap-list">
-                  {domain.suggestedGaps.map((g) => (
-                    <li key={g}>{g}</li>
-                  ))}
-                </ul>
-              )}
-              <label className="dm-field-label" htmlFor="gap-notes">
-                Clinician notes on gaps
+            )}
+            <label className="dm-field-label" htmlFor="gap-notes">
+              Clinician notes on gaps
+            </label>
+            <textarea
+              id="gap-notes"
+              className="assessment-notes"
+              style={{ marginTop: 0, minHeight: "4rem" }}
+              value={domain.evidenceGapNotes ?? ""}
+              onChange={(e) => {
+                setDomain((d) => ({ ...d, evidenceGapNotes: e.target.value }));
+                debouncedPatch({ evidenceGapNotes: e.target.value || null });
+              }}
+            />
+            <div className="dm-add-note">
+              <label className="dm-field-label" htmlFor="manual-note">
+                Add evidence note
               </label>
               <textarea
-                id="gap-notes"
+                id="manual-note"
                 className="assessment-notes"
-                style={{ marginTop: 0, minHeight: "4rem" }}
-                value={domain.evidenceGapNotes ?? ""}
-                onChange={(e) => {
-                  setDomain((d) => ({ ...d, evidenceGapNotes: e.target.value }));
-                  debouncedPatch({ evidenceGapNotes: e.target.value || null });
-                }}
+                style={{ minHeight: "3rem" }}
+                value={manualNote}
+                onChange={(e) => setManualNote(e.target.value)}
+                placeholder="Strengths, developmental history, or observations not in a module…"
               />
+              <div className="dm-actions">
+                <button
+                  type="button"
+                  className="dm-btn"
+                  onClick={addManualNote}
+                  disabled={saving || !manualNote.trim()}
+                >
+                  Add note as evidence
+                </button>
+              </div>
             </div>
-          )}
+          </div>
 
+          {/* 5. Differential considerations */}
           <div className="dm-panel">
-            <h2 className="dm-panel-title">Clinical synthesis</h2>
-            <p className="dm-panel-hint">Your judgment — not set by the tool.</p>
+            <h2 className="dm-panel-title">Differential considerations</h2>
+            <p className="dm-panel-hint">
+              Alternative explanations you are weighing — clinician-owned, not AI-generated.
+            </p>
+            <textarea
+              id="alt-exp"
+              className="assessment-notes"
+              style={{ minHeight: "4.5rem" }}
+              value={altText}
+              onChange={(e) => setAltText(e.target.value)}
+              onBlur={commitAlternatives}
+              placeholder="One alternative per line…"
+            />
+          </div>
 
-            <div className="dm-field-label">Clinical confidence</div>
-            <div className="dm-conf" role="group" aria-label="Clinical confidence">
+          {/* 6. Clinical notes */}
+          <div className="dm-panel">
+            <h2 className="dm-panel-title">Clinical notes</h2>
+            <p className="dm-panel-hint">Private synthesis notes — not included in the report draft.</p>
+            <textarea
+              id="clinical-notes"
+              className="assessment-notes"
+              style={{ minHeight: "5rem" }}
+              value={domain.clinicalNotes ?? ""}
+              onChange={(e) => {
+                setDomain((d) => ({ ...d, clinicalNotes: e.target.value }));
+                debouncedPatch({ clinicalNotes: e.target.value || null });
+              }}
+            />
+          </div>
+
+          {/* 7. Domain confidence */}
+          <div className="dm-panel">
+            <h2 className="dm-panel-title">Domain confidence</h2>
+            <p className="dm-panel-hint">Your clinical confidence for this domain — unset by default.</p>
+            <div className="dm-conf" role="group" aria-label="Domain confidence">
               {CONFIDENCE_LEVELS.map((opt) => (
                 <button
                   key={opt.label}
@@ -197,36 +354,15 @@ export function DomainWorkspaceClient({
                 </button>
               ))}
             </div>
+          </div>
 
-            <label className="dm-field-label" htmlFor="alt-exp">
-              Alternative explanations / differentials
-            </label>
-            <textarea
-              id="alt-exp"
-              className="assessment-notes"
-              style={{ minHeight: "4.5rem" }}
-              value={altText}
-              onChange={(e) => setAltText(e.target.value)}
-              onBlur={commitAlternatives}
-            />
-
-            <label className="dm-field-label" htmlFor="clinical-notes">
-              Clinical notes
-            </label>
-            <textarea
-              id="clinical-notes"
-              className="assessment-notes"
-              style={{ minHeight: "5rem" }}
-              value={domain.clinicalNotes ?? ""}
-              onChange={(e) => {
-                setDomain((d) => ({ ...d, clinicalNotes: e.target.value }));
-                debouncedPatch({ clinicalNotes: e.target.value || null });
-              }}
-            />
-
-            <label className="dm-field-label" htmlFor="summary-draft">
-              Report summary draft
-            </label>
+          {/* 8. Report preview */}
+          <div className="dm-panel">
+            <h2 className="dm-panel-title">Report draft</h2>
+            <p className="dm-panel-hint">
+              Clinician-owned report language for this domain. Edit directly or copy from the
+              evidence summary above.
+            </p>
             <textarea
               id="summary-draft"
               className="assessment-report-editor"
@@ -238,31 +374,12 @@ export function DomainWorkspaceClient({
               }}
               placeholder="Editable domain-level summary for the report…"
             />
-          </div>
-
-          <div className="dm-panel">
-            <h2 className="dm-panel-title">Add clinician note</h2>
-            <p className="dm-panel-hint">
-              Useful for strengths, developmental history, or observations not captured in a
-              module.
-            </p>
-            <textarea
-              className="assessment-notes"
-              style={{ minHeight: "3.5rem" }}
-              value={manualNote}
-              onChange={(e) => setManualNote(e.target.value)}
-              placeholder="Free-text evidence for this domain…"
-            />
-            <div className="dm-actions">
-              <button
-                type="button"
-                className="dm-btn dm-btn--primary"
-                onClick={addManualNote}
-                disabled={saving || !manualNote.trim()}
-              >
-                Add note as evidence
-              </button>
-            </div>
+            {domain.summaryDraft?.trim() ? (
+              <div className="dm-report-preview" aria-label="Report preview">
+                <div className="dm-report-preview-label">Preview</div>
+                <div className="dm-report-preview-body">{domain.summaryDraft}</div>
+              </div>
+            ) : null}
           </div>
 
           <div className="dm-actions">

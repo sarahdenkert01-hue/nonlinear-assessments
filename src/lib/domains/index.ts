@@ -18,6 +18,7 @@ export {
   addManualDomainEvidence,
   countConfirmedFindings,
   ensureDomainEvidenceForEpisode,
+  generateAndSaveEvidenceSummary,
   getDomainDetailForEpisode,
   listDomainSummariesForEpisode,
   updateDomainReview,
