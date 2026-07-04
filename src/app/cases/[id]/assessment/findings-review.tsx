@@ -37,6 +37,15 @@ const CONFIDENCE_LEVELS: { value: Confidence | null; label: string; title: strin
   { value: "HIGH", label: "High", title: "High confidence" },
 ];
 
+const SHORTCUTS = [
+  { keys: ["↑", "↓"], action: "Move to previous / next finding" },
+  { keys: ["C"], action: "Confirm active finding for report" },
+  { keys: ["X"], action: "Exclude active finding" },
+  { keys: ["1", "2", "3"], action: "Set confidence: Low / Moderate / High" },
+  { keys: ["E"], action: "Expand or collapse evidence" },
+  { keys: ["A"], action: "Expand or collapse alternative explanations" },
+] as const;
+
 function categoryBadgeClass(category: string | null): string {
   if (category === "ADHD") return "assessment-badge assessment-badge--adhd";
   if (category === "Autism") return "assessment-badge assessment-badge--autism";
@@ -50,14 +59,24 @@ function isIncluded(status: FindingStatus): boolean {
   return status !== "EXCLUDED";
 }
 
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    target.isContentEditable
+  );
+}
+
 type StatusMeta = { mod: "review" | "included" | "excluded"; label: string };
 function statusMeta(status: FindingStatus): StatusMeta {
   if (status === "EXCLUDED") return { mod: "excluded", label: "Excluded" };
-  if (status === "PROPOSED") return { mod: "review", label: "Needs review" };
+  if (status === "PROPOSED") return { mod: "review", label: "Awaiting decision" };
   return { mod: "included", label: "Included" };
 }
 
-// Objective signal derived from the responses — kept separate from clinical confidence.
 function evidenceStrength(finding: FindingRecord): {
   level: 0 | 1 | 2 | 3;
   word: string;
@@ -70,8 +89,6 @@ function evidenceStrength(finding: FindingRecord): {
   return { level: 1, word: "Limited", none: false };
 }
 
-// Stable session order: undecided first, then included, then excluded; strongest evidence first
-// within each group. Computed once so decisions never reshuffle the list under the clinician.
 function orderFindings(list: FindingRecord[]): FindingRecord[] {
   const rank = (f: FindingRecord) =>
     f.status === "PROPOSED" ? 0 : f.status === "EXCLUDED" ? 2 : 1;
@@ -106,20 +123,24 @@ export function FindingsReview({
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "undecided">("all");
   const [showHelp, setShowHelp] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set());
+  const [expandedAlt, setExpandedAlt] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(() => {
     const ordered = orderFindings(initialFindings);
     return (ordered.find(isProposed) ?? ordered[0])?.id ?? null;
   });
 
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const shortcutsBtnRef = useRef<HTMLButtonElement>(null);
+  const shortcutsPopoverRef = useRef<HTMLDivElement>(null);
 
+  const totalCount = findings.length;
   const needsReviewCount = findings.filter(isProposed).length;
   const includedCount = findings.filter((f) => isIncluded(f.status)).length;
   const excludedCount = findings.filter((f) => f.status === "EXCLUDED").length;
-  const decidedCount = findings.length - needsReviewCount;
+  const reviewedCount = totalCount - needsReviewCount;
   const progressPct =
-    findings.length > 0 ? Math.round((decidedCount / findings.length) * 100) : 0;
+    totalCount > 0 ? Math.round((reviewedCount / totalCount) * 100) : 0;
 
   const visible = useMemo(
     () => (filterMode === "undecided" ? findings.filter(isProposed) : findings),
@@ -131,7 +152,6 @@ export function FindingsReview({
     return THEMES.filter((t) => !present.has(t.id));
   }, [findings]);
 
-  // Keep focus on something that is actually on screen.
   useEffect(() => {
     if (visible.length === 0) {
       if (focusedId !== null) setFocusedId(null);
@@ -142,11 +162,36 @@ export function FindingsReview({
     }
   }, [visible, focusedId]);
 
-  // Scroll the focused card into view (scroll-margin keeps it clear of the sticky toolbar).
   useEffect(() => {
     if (!focusedId) return;
-    cardRefs.current.get(focusedId)?.scrollIntoView({ block: "nearest" });
+    cardRefs.current.get(focusedId)?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth",
+    });
   }, [focusedId]);
+
+  useEffect(() => {
+    if (!showHelp) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        shortcutsPopoverRef.current?.contains(target) ||
+        shortcutsBtnRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setShowHelp(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowHelp(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showHelp]);
 
   const runPatch = useCallback(
     async (
@@ -174,8 +219,7 @@ export function FindingsReview({
           error?: string;
         }>(res);
         if (!res.ok || !data.finding) throw new Error(data.error ?? "Update failed");
-        const saved = data.finding;
-        setFindings((prev) => prev.map((f) => (f.id === id ? saved : f)));
+        setFindings((prev) => prev.map((f) => (f.id === id ? data.finding! : f)));
       } catch (err) {
         if (snapshot) {
           const restore = snapshot;
@@ -209,7 +253,7 @@ export function FindingsReview({
   );
 
   const setConfidenceFor = useCallback(
-    (id: string, confidence: Confidence | null) => {
+    (id: string, confidence: Confidence) => {
       if (reportFinalized) return;
       void runPatch(id, { confidence });
     },
@@ -230,7 +274,16 @@ export function FindingsReview({
   );
 
   const toggleEvidence = useCallback((id: string) => {
-    setExpanded((prev) => {
+    setExpandedEvidence((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAlternatives = useCallback((id: string) => {
+    setExpandedAlt((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -239,7 +292,7 @@ export function FindingsReview({
   }, []);
 
   const setEvidenceOpen = useCallback((id: string, open: boolean) => {
-    setExpanded((prev) => {
+    setExpandedEvidence((prev) => {
       if (open === prev.has(id)) return prev;
       const next = new Set(prev);
       if (open) next.add(id);
@@ -248,38 +301,27 @@ export function FindingsReview({
     });
   }, []);
 
-  // Global keyboard triage. Ignored while typing in a field.
+  const setAlternativesOpen = useCallback((id: string, open: boolean) => {
+    setExpandedAlt((prev) => {
+      if (open === prev.has(id)) return prev;
+      const next = new Set(prev);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (
-        t &&
-        (t.tagName === "INPUT" ||
-          t.tagName === "TEXTAREA" ||
-          t.tagName === "SELECT" ||
-          t.isContentEditable)
-      ) {
-        return;
-      }
+      if (isTypingTarget(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
-        case "?":
-          setShowHelp((s) => !s);
-          break;
-        case "j":
-        case "J":
         case "ArrowDown":
           moveFocus(1);
           break;
-        case "k":
-        case "K":
         case "ArrowUp":
           moveFocus(-1);
-          break;
-        case "f":
-        case "F":
-          setFilterMode((m) => (m === "all" ? "undecided" : "all"));
           break;
         case "c":
         case "C":
@@ -293,8 +335,9 @@ export function FindingsReview({
         case "E":
           if (focusedId) toggleEvidence(focusedId);
           break;
-        case "0":
-          if (focusedId) setConfidenceFor(focusedId, null);
+        case "a":
+        case "A":
+          if (focusedId) toggleAlternatives(focusedId);
           break;
         case "1":
           if (focusedId) setConfidenceFor(focusedId, "LOW");
@@ -312,7 +355,14 @@ export function FindingsReview({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusedId, moveFocus, decide, toggleEvidence, setConfidenceFor]);
+  }, [
+    focusedId,
+    moveFocus,
+    decide,
+    toggleEvidence,
+    toggleAlternatives,
+    setConfidenceFor,
+  ]);
 
   const handleAddFinding = async () => {
     if (!addCode) return;
@@ -333,8 +383,7 @@ export function FindingsReview({
         error?: string;
       }>(res);
       if (!res.ok || !data.finding) throw new Error(data.error ?? "Add failed");
-      const added = data.finding;
-      setFindings((prev) => [...prev, added]);
+      setFindings((prev) => [...prev, data.finding as FindingRecord]);
       setAddCode("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Add failed");
@@ -347,8 +396,6 @@ export function FindingsReview({
       clinicianNotes: notes.trim() || undefined,
       narrativeOnly,
     });
-
-  const allReviewed = needsReviewCount === 0;
 
   return (
     <div className="assessment-root">
@@ -363,21 +410,25 @@ export function FindingsReview({
         </header>
 
         <div className="fr-wrap">
-          {findings.length > 0 && (
-            <div className="fr-toolbar">
+          {totalCount > 0 && (
+            <div
+              className="fr-toolbar"
+              role="region"
+              aria-label="Clinical review progress"
+            >
               <div className="fr-toolbar-main">
                 <div className="fr-toolbar-left">
-                  <span className="fr-toolbar-headline">
-                    {allReviewed
-                      ? "All findings reviewed"
-                      : `${needsReviewCount} awaiting your decision`}
-                  </span>
-                  <div className="fr-toolbar-counts">
+                  <h2 className="fr-toolbar-title">Clinical review</h2>
+                  <div className="fr-toolbar-stats">
                     <span>
-                      <strong>{decidedCount}</strong>/{findings.length} decided
+                      <strong>{reviewedCount}</strong> of{" "}
+                      <strong>{totalCount}</strong> reviewed
                     </span>
                     <span>
-                      <strong>{includedCount}</strong> in report
+                      <strong>{needsReviewCount}</strong> remaining
+                    </span>
+                    <span>
+                      <strong>{includedCount}</strong> included
                     </span>
                     <span>
                       <strong>{excludedCount}</strong> excluded
@@ -389,6 +440,7 @@ export function FindingsReview({
                     aria-valuenow={progressPct}
                     aria-valuemin={0}
                     aria-valuemax={100}
+                    aria-label={`${reviewedCount} of ${totalCount} findings reviewed`}
                   >
                     <div
                       className="fr-toolbar-fill"
@@ -396,6 +448,7 @@ export function FindingsReview({
                     />
                   </div>
                 </div>
+
                 <div className="fr-toolbar-right">
                   <button
                     type="button"
@@ -404,61 +457,66 @@ export function FindingsReview({
                       setFilterMode((m) => (m === "all" ? "undecided" : "all"))
                     }
                     aria-pressed={filterMode === "undecided"}
-                    title="Toggle needs-review only (F)"
                   >
-                    Needs review only
+                    Awaiting decision only
                   </button>
-                  <button
-                    type="button"
-                    className={`fr-tool-btn${showHelp ? " fr-tool-btn--on" : ""}`}
-                    onClick={() => setShowHelp((s) => !s)}
-                    title="Keyboard shortcuts (?)"
-                  >
-                    ⌨ Shortcuts
-                  </button>
+
+                  <div className="fr-shortcuts-anchor">
+                    <button
+                      ref={shortcutsBtnRef}
+                      type="button"
+                      className={`fr-tool-btn${showHelp ? " fr-tool-btn--on" : ""}`}
+                      onClick={() => setShowHelp((s) => !s)}
+                      aria-expanded={showHelp}
+                      aria-haspopup="dialog"
+                    >
+                      Shortcuts
+                    </button>
+
+                    {showHelp && (
+                      <div
+                        ref={shortcutsPopoverRef}
+                        className="fr-shortcuts-popover"
+                        role="dialog"
+                        aria-label="Keyboard shortcuts"
+                      >
+                        <p className="fr-shortcuts-title">Keyboard shortcuts</p>
+                        <ul className="fr-shortcuts-list">
+                          {SHORTCUTS.map((row) => (
+                            <li key={row.action} className="fr-shortcuts-row">
+                              <span className="fr-shortcuts-keys">
+                                {row.keys.map((key) => (
+                                  <kbd key={key} className="fr-key">
+                                    {key}
+                                  </kbd>
+                                ))}
+                              </span>
+                              <span className="fr-shortcuts-action">{row.action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="fr-shortcuts-note">
+                          Shortcuts apply to the highlighted finding only. They are
+                          disabled while typing in a field.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {showHelp && (
-                <div className="fr-help">
-                  <span className="fr-help-row">
-                    <span className="fr-key">J</span>
-                    <span className="fr-key">K</span> Move between findings
-                  </span>
-                  <span className="fr-help-row">
-                    <span className="fr-key">C</span> Confirm for report
-                  </span>
-                  <span className="fr-help-row">
-                    <span className="fr-key">X</span> Exclude
-                  </span>
-                  <span className="fr-help-row">
-                    <span className="fr-key">0</span>–<span className="fr-key">3</span>{" "}
-                    Confidence (none/low/mod/high)
-                  </span>
-                  <span className="fr-help-row">
-                    <span className="fr-key">E</span> Show / hide evidence
-                  </span>
-                  <span className="fr-help-row">
-                    <span className="fr-key">F</span> Needs-review only
-                  </span>
-                  <span className="fr-help-row">
-                    <span className="fr-key">?</span> Toggle this help
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
           {error && <div className="assessment-alert">{error}</div>}
 
-          {findings.length === 0 && (
+          {totalCount === 0 && (
             <div className="fr-empty">
               No findings were proposed from the responses. You can add clinically
               relevant findings manually below.
             </div>
           )}
 
-          {findings.length > 0 && visible.length === 0 && (
+          {totalCount > 0 && visible.length === 0 && (
             <div className="fr-empty">
               Nothing left to review — every finding has a decision.{" "}
               <button
@@ -473,13 +531,14 @@ export function FindingsReview({
           )}
 
           {visible.length > 0 && (
-            <div className="fr-list" role="list">
+            <div className="fr-list" role="list" aria-label="Findings to review">
               {visible.map((finding) => (
                 <FindingCard
                   key={finding.id}
                   finding={finding}
                   focused={focusedId === finding.id}
-                  expanded={expanded.has(finding.id)}
+                  evidenceExpanded={expandedEvidence.has(finding.id)}
+                  altExpanded={expandedAlt.has(finding.id)}
                   disabled={reportFinalized}
                   registerRef={(el) => {
                     if (el) cardRefs.current.set(finding.id, el);
@@ -487,9 +546,16 @@ export function FindingsReview({
                   }}
                   onFocusCard={() => setFocusedId(finding.id)}
                   onStatus={(status) => decide(finding.id, status)}
-                  onConfidence={(confidence) => setConfidenceFor(finding.id, confidence)}
+                  onConfidence={(confidence) => {
+                    if (confidence) setConfidenceFor(finding.id, confidence);
+                    else void runPatch(finding.id, { confidence: null });
+                  }}
                   onToggleEvidence={() => toggleEvidence(finding.id)}
+                  onToggleAlternatives={() => toggleAlternatives(finding.id)}
                   onEvidenceOpenChange={(open) => setEvidenceOpen(finding.id, open)}
+                  onAlternativesOpenChange={(open) =>
+                    setAlternativesOpen(finding.id, open)
+                  }
                   onAlternatives={(alts) =>
                     runPatch(finding.id, { alternativeExplanations: alts })
                   }
@@ -572,32 +638,39 @@ export function FindingsReview({
 function FindingCard({
   finding,
   focused,
-  expanded,
+  evidenceExpanded,
+  altExpanded,
   disabled,
   registerRef,
   onFocusCard,
   onStatus,
   onConfidence,
   onToggleEvidence,
+  onToggleAlternatives,
   onEvidenceOpenChange,
+  onAlternativesOpenChange,
   onAlternatives,
 }: {
   finding: FindingRecord;
   focused: boolean;
-  expanded: boolean;
+  evidenceExpanded: boolean;
+  altExpanded: boolean;
   disabled: boolean;
   registerRef: (el: HTMLElement | null) => void;
   onFocusCard: () => void;
   onStatus: (status: FindingStatus) => void;
   onConfidence: (confidence: Confidence | null) => void;
   onToggleEvidence: () => void;
+  onToggleAlternatives: () => void;
   onEvidenceOpenChange: (open: boolean) => void;
+  onAlternativesOpenChange: (open: boolean) => void;
   onAlternatives: (alternatives: string[]) => void;
 }) {
   const [altText, setAltText] = useState(finding.alternativeExplanations.join("\n"));
   const strength = evidenceStrength(finding);
   const meta = statusMeta(finding.status);
   const evidenceCount = finding.evidence.length;
+  const showStatusBadge = finding.status !== "PROPOSED";
 
   const commitAlternatives = () => {
     const next = altText
@@ -611,7 +684,10 @@ function FindingCard({
   return (
     <article
       ref={registerRef}
+      id={`finding-${finding.id}`}
       role="listitem"
+      aria-current={focused ? "true" : undefined}
+      tabIndex={focused ? 0 : -1}
       className={`fr-card fr-card--${meta.mod}${focused ? " fr-card--focused" : ""}`}
       onMouseDown={onFocusCard}
     >
@@ -627,7 +703,9 @@ function FindingCard({
           </div>
           <h3 className="fr-card-label">{finding.label}</h3>
         </div>
-        <span className={`fr-status fr-status--${meta.mod}`}>{meta.label}</span>
+        {showStatusBadge && (
+          <span className={`fr-status fr-status--${meta.mod}`}>{meta.label}</span>
+        )}
       </div>
 
       <div className="fr-metrics">
@@ -675,7 +753,7 @@ function FindingCard({
 
       <details
         className="fr-disclosure"
-        open={expanded}
+        open={evidenceExpanded}
         onToggle={(e) => onEvidenceOpenChange(e.currentTarget.open)}
       >
         <summary
@@ -687,6 +765,9 @@ function FindingCard({
           Review evidence{" "}
           <span className="fr-disclosure-meta">
             · {evidenceCount} endorsed item{evidenceCount === 1 ? "" : "s"}
+          </span>
+          <span className="fr-disclosure-key" aria-hidden>
+            E
           </span>
         </summary>
         <div className="fr-evidence-body">
@@ -709,14 +790,26 @@ function FindingCard({
         </div>
       </details>
 
-      <details className="fr-disclosure">
-        <summary>
+      <details
+        className="fr-disclosure"
+        open={altExpanded}
+        onToggle={(e) => onAlternativesOpenChange(e.currentTarget.open)}
+      >
+        <summary
+          onClick={(e) => {
+            e.preventDefault();
+            onToggleAlternatives();
+          }}
+        >
           Alternative explanations
           {finding.alternativeExplanations.length > 0 && (
             <span className="fr-disclosure-meta">
               · {finding.alternativeExplanations.length} noted
             </span>
           )}
+          <span className="fr-disclosure-key" aria-hidden>
+            A
+          </span>
         </summary>
         <div className="fr-alt-body">
           <textarea
@@ -755,7 +848,7 @@ function FindingCard({
               onClick={() => onStatus("EXCLUDED")}
               disabled={disabled}
             >
-              Exclude <span aria-hidden>(X)</span>
+              Exclude <span className="fr-key-hint" aria-hidden>(X)</span>
             </button>
             <button
               type="button"
@@ -763,7 +856,7 @@ function FindingCard({
               onClick={() => onStatus("ACCEPTED")}
               disabled={disabled}
             >
-              Confirm <span aria-hidden>(C)</span>
+              Confirm <span className="fr-key-hint" aria-hidden>(C)</span>
             </button>
           </>
         ) : (
@@ -777,7 +870,7 @@ function FindingCard({
               onClick={() => onStatus("EXCLUDED")}
               disabled={disabled}
             >
-              Exclude <span aria-hidden>(X)</span>
+              Exclude <span className="fr-key-hint" aria-hidden>(X)</span>
             </button>
           </>
         )}

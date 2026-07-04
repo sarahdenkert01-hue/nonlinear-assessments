@@ -93,21 +93,24 @@
   gap: 0.5rem;
 }
 
-.fr-toolbar-headline {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--foreground);
+.fr-toolbar-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.fr-toolbar-counts {
+.fr-toolbar-stats {
   display: flex;
-  gap: 1rem;
+  gap: 1.1rem;
   flex-wrap: wrap;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   color: var(--muted);
-  margin-top: 0.15rem;
+  margin-top: 0.35rem;
 }
-.fr-toolbar-counts strong {
+.fr-toolbar-stats strong {
   color: var(--foreground);
   font-weight: 700;
 }
@@ -147,33 +150,88 @@
   color: #fff;
 }
 
-/* Keyboard shortcut help */
-.fr-help {
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 0.4rem 1.5rem;
+/* Compact shortcuts popover */
+.fr-shortcuts-anchor {
+  position: relative;
 }
-.fr-help-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+
+.fr-shortcuts-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 20;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.fr-shortcuts-title {
+  margin: 0 0 0.65rem;
   font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
 }
+
+.fr-shortcuts-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.fr-shortcuts-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: baseline;
+  font-size: 0.78rem;
+}
+
+.fr-shortcuts-keys {
+  display: inline-flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.fr-shortcuts-action {
+  color: var(--foreground);
+  line-height: 1.35;
+}
+
+.fr-shortcuts-note {
+  margin: 0.75rem 0 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .fr-key {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--foreground);
   background: color-mix(in srgb, var(--foreground) 7%, var(--surface));
   border: 1px solid var(--border-strong);
   border-radius: 5px;
-  padding: 0.05rem 0.4rem;
-  min-width: 1.1rem;
+  padding: 0.05rem 0.35rem;
+  min-width: 1rem;
   text-align: center;
+}
+
+.fr-key-hint {
+  margin-left: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.65;
 }
 
 /* ---- Sections ----------------------------------------------------------- */
@@ -427,6 +485,18 @@ html.dark .fr-meter-seg--on {
 .fr-disclosure-meta {
   font-weight: 500;
   color: var(--muted);
+}
+
+.fr-disclosure-key {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
 }
 
 .fr-evidence-body,
