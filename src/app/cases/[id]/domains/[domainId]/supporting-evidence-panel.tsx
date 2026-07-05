@@ -1,25 +1,22 @@
-import type { EvidenceSourceType, EvidenceBucketView } from "@/lib/domains/types";
-import { computeEvidenceCoverage } from "@/lib/domains";
+import type { EvidenceBucketView, EvidenceSourceType } from "@/lib/domains/types";
 
 export function SupportingEvidencePanel({
-  domainId,
   confirmedFindingCount,
   evidenceCount,
-  sourceTypes,
   evidenceBuckets,
 }: {
-  domainId: string;
+  domainId?: string;
   confirmedFindingCount: number;
   evidenceCount: number;
-  sourceTypes: EvidenceSourceType[];
+  sourceTypes?: EvidenceSourceType[];
   evidenceBuckets: EvidenceBucketView[];
 }) {
-  const coverage = computeEvidenceCoverage(domainId, sourceTypes as never);
-
   return (
-    <section id="section-know" className="dm-panel dm-section dm-panel--compact">
-      <p className="dm-section-step">Evidence</p>
-      <h2 className="dm-panel-title">Supporting evidence</h2>
+    <section id="section-know" className="dm-workspace-section">
+      <h2 className="dm-section-heading">Supporting evidence</h2>
+      <p className="dm-section-lead">
+        What do I know? Review linked findings and source material before interpreting.
+      </p>
 
       <div className="dm-know-stats">
         <div className="dm-know-stat">
@@ -30,23 +27,17 @@ export function SupportingEvidencePanel({
           <span className="dm-know-stat-value">{evidenceCount}</span>
           <span className="dm-know-stat-label">Evidence items</span>
         </div>
-        {coverage.expected > 0 && (
-          <div className="dm-know-stat">
-            <span className="dm-know-stat-value">{coverage.percent}%</span>
-            <span className="dm-know-stat-label">Source coverage</span>
-          </div>
-        )}
       </div>
 
       {evidenceBuckets.length === 0 ? (
-        <p className="dm-panel-hint">No evidence linked yet.</p>
+        <p className="dm-section-lead">No evidence linked yet.</p>
       ) : (
         <div className="dm-source-groups">
           {evidenceBuckets.map((bucket) => (
             <details key={bucket.id} className="dm-source-group" open={bucket.id === "screener"}>
               <summary className="dm-source-group-summary">
                 <span className="dm-source-group-label">{bucket.label}</span>
-                <span className="dm-finding-meta">
+                <span className="dm-source-group-meta">
                   {bucket.itemCount} item{bucket.itemCount === 1 ? "" : "s"}
                 </span>
               </summary>
@@ -64,9 +55,7 @@ export function SupportingEvidencePanel({
                         </span>
                       </summary>
                       {f.evidence.length === 0 ? (
-                        <p className="dm-panel-hint" style={{ margin: "0.5rem 0.85rem 0.75rem" }}>
-                          No item-level evidence.
-                        </p>
+                        <p className="dm-section-lead dm-section-lead--inset">No item-level evidence.</p>
                       ) : (
                         <ul className="dm-evidence-items">
                           {f.evidence.map((e) => (
@@ -96,9 +85,7 @@ export function SupportingEvidencePanel({
               )}
 
               {bucket.findings.length === 0 && bucket.items.length === 0 && (
-                <p className="dm-panel-hint" style={{ margin: "0 0 0.75rem" }}>
-                  No items in this source yet.
-                </p>
+                <p className="dm-section-lead dm-section-lead--inset">No items in this source yet.</p>
               )}
             </details>
           ))}

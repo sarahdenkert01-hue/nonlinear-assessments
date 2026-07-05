@@ -1,36 +1,23 @@
 "use client";
 
-import type { ClinicalFormulationDraft } from "@/lib/domains/types";
-
 export function ReportStage({
   summaryDraft,
   evidenceSummaryDraft,
-  clinicalFormulation,
   saving,
   onSummaryChange,
   onCopySynthesisToReport,
-  onCopyFormulationSectionToReport,
 }: {
   summaryDraft: string | null;
   evidenceSummaryDraft: string | null;
-  clinicalFormulation: ClinicalFormulationDraft;
   saving: boolean;
   onSummaryChange: (value: string) => void;
   onCopySynthesisToReport: () => void;
-  onCopyFormulationSectionToReport: (text: string) => void;
 }) {
-  const formulationSections = [
-    { label: "Core understanding", text: clinicalFormulation.coreUnderstanding },
-    { label: "Functional impact", text: clinicalFormulation.functionalImpact },
-    { label: "Strengths & strategies", text: clinicalFormulation.strengthsAdaptiveStrategies },
-  ].filter((s) => s.text?.trim());
-
   return (
-    <section className="dm-panel dm-section dm-report-panel dm-report-panel--final">
-      <p className="dm-section-step">Report language</p>
-      <h2 className="dm-panel-title dm-panel-title--lg">Final clinician wording</h2>
-      <p className="dm-panel-hint dm-panel-hint--tight">
-        Source of truth for the report — never auto-filled.
+    <section className="dm-workspace-section dm-workspace-section--hero dm-report-panel--final">
+      <h2 className="dm-section-heading">How should I communicate this?</h2>
+      <p className="dm-section-lead dm-section-lead--emphasis">
+        Final clinician wording — the language that will appear in the final report.
       </p>
 
       <textarea
@@ -38,11 +25,11 @@ export function ReportStage({
         className="assessment-report-editor dm-report-editor"
         value={summaryDraft ?? ""}
         onChange={(e) => onSummaryChange(e.target.value)}
-        placeholder="Write the domain summary as it should appear in the report…"
+        placeholder="Write how this domain should read in the report…"
         disabled={saving}
       />
 
-      <div className="dm-actions">
+      <div className="dm-actions dm-actions--tight">
         <button
           type="button"
           className="dm-btn dm-btn--primary"
@@ -51,18 +38,14 @@ export function ReportStage({
         >
           Copy clinical synthesis
         </button>
-        {formulationSections.map((section) => (
-          <button
-            key={section.label}
-            type="button"
-            className="dm-btn"
-            onClick={() => onCopyFormulationSectionToReport(section.text!)}
-            disabled={saving}
-          >
-            Copy {section.label.toLowerCase()}
-          </button>
-        ))}
       </div>
+
+      {summaryDraft?.trim() ? (
+        <div className="dm-report-preview" aria-label="Report preview">
+          <p className="dm-report-preview-label">Preview</p>
+          <div className="dm-report-preview-body">{summaryDraft}</div>
+        </div>
+      ) : null}
     </section>
   );
 }

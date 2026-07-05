@@ -9,33 +9,22 @@ import type { ClinicalFormulationDraft, ClinicalQuestionPrompt, DomainDetail, Do
 import { createQuestionPrompt } from "@/lib/domains/clinical-questions";
 import "@/features/assessments/components/assessment.css";
 import "../domains.css";
-import { ClinicalQuestionCards } from "./clinical-question-cards";
-import { DifferentialPromptList } from "./differential-prompt-list";
 import { DomainStatusSidebar, type WorkspaceStage } from "./domain-status-sidebar";
-import { FormulationWorkspace } from "./formulation-workspace";
+import { FormulateStage } from "./formulate-stage";
 import { ReportStage } from "./report-stage";
-import { SupportingEvidencePanel } from "./supporting-evidence-panel";
+import { UnderstandStage } from "./understand-stage";
 
-const UNDERSTAND_SECTIONS = [
-  { id: "section-know", num: "1", label: "Know" },
-  { id: "section-patterns", num: "2", label: "Pattern" },
-  { id: "section-opportunities", num: "3", label: "Strengthen" },
-  { id: "section-questions", num: "4", label: "Ask" },
-  { id: "section-differentials", num: "5", label: "Else" },
-] as const;
-
-const STAGES: { id: WorkspaceStage; label: string }[] = [
-  { id: "understand", label: "Understand" },
-  { id: "formulate", label: "Formulate" },
-  { id: "report", label: "Report" },
+const STAGES: { id: WorkspaceStage; label: string; purpose: string }[] = [
+  { id: "understand", label: "Understand", purpose: "What do I know?" },
+  { id: "formulate", label: "Formulate", purpose: "What does this mean?" },
+  { id: "report", label: "Report", purpose: "How do I communicate this?" },
 ];
 
 const SHORTCUTS = [
-  { keys: ["1", "6"], action: "Jump to section" },
-  { keys: ["G"], action: "Generate clinical synthesis" },
-  { keys: ["Q"], action: "Generate suggested questions" },
-  { keys: ["D"], action: "Generate differential prompts" },
-  { keys: ["C"], action: "Copy synthesis → report draft" },
+  { keys: ["G"], action: "Generate synthesis draft (Formulate)" },
+  { keys: ["Q"], action: "Generate interview prompts (Formulate)" },
+  { keys: ["D"], action: "Generate reasoning prompts (Formulate)" },
+  { keys: ["C"], action: "Copy synthesis (Report)" },
 ];
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -68,6 +57,7 @@ export function DomainWorkspaceClient({
   const shortcutsRef = useRef<HTMLDivElement>(null);
 
   const coverage = computeEvidenceCoverage(domain.domainId, domain.sourceTypes);
+  const activeStage = STAGES.find((s) => s.id === stage)!;
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -101,17 +91,17 @@ export function DomainWorkspaceClient({
     [debouncedPatch],
   );
 
-  const patchFormulation = useCallback(
-    (next: ClinicalFormulationDraft) => {
+  const patchClinicianNotes = useCallback(
+    (value: string) => {
+      const next: ClinicalFormulationDraft = {
+        ...domain.clinicalFormulation,
+        clinicalConsiderations: value.trim() ? value : null,
+      };
       setDomain((d) => ({ ...d, clinicalFormulation: next }));
       debouncedPatch({ clinicalFormulationDraft: next });
     },
-    [debouncedPatch],
+    [debouncedPatch, domain.clinicalFormulation],
   );
-
-  const scrollToSection = useCallback((id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
 
   const commitAlternatives = useCallback(() => {
     const next = altText
@@ -187,16 +177,6 @@ export function DomainWorkspaceClient({
     }
   }, [episodeId, domain.domainId]);
 
-  const copyFormulationSectionToReport = useCallback(
-    (text: string) => {
-      const existing = domain.summaryDraft?.trim();
-      const next = existing ? `${existing}\n\n${text.trim()}` : text.trim();
-      setDomain((d) => ({ ...d, summaryDraft: next }));
-      void patch({ summaryDraft: next });
-    },
-    [domain.summaryDraft, patch],
-  );
-
   const copySynthesisToReport = useCallback(() => {
     const next = domain.evidenceSummaryDraft?.trim();
     if (!next) return;
@@ -228,8 +208,8 @@ export function DomainWorkspaceClient({
       .filter(Boolean),
   );
 
-  const addManualNote = async (excerpt?: string) => {
-    const text = (excerpt ?? manualNote).trim();
+  const addManualNote = async () => {
+    const text = manualNote.trim();
     if (!text) return;
     setSaving(true);
     setError(null);
@@ -242,7 +222,7 @@ export function DomainWorkspaceClient({
       const data = await parseApiResponse<{ domain?: DomainDetail; error?: string }>(res);
       if (!res.ok || !data.domain) throw new Error(data.error ?? "Failed");
       setDomain(data.domain);
-      if (!excerpt) setManualNote("");
+      setManualNote("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -265,20 +245,14 @@ export function DomainWorkspaceClient({
         setShortcutsOpen((v) => !v);
         return;
       }
-      const num = Number(e.key);
-      if (num >= 1 && num <= 5 && stage === "understand") {
-        e.preventDefault();
-        scrollToSection(UNDERSTAND_SECTIONS[num - 1]!.id);
-        return;
-      }
       const key = e.key.toLowerCase();
-      if (key === "g") {
+      if (key === "g" && stage === "formulate") {
         e.preventDefault();
         void generateSynthesis();
-      } else if (key === "q") {
+      } else if (key === "q" && stage === "formulate") {
         e.preventDefault();
         void generateQuestions(false);
-      } else if (key === "d") {
+      } else if (key === "d" && stage === "formulate") {
         e.preventDefault();
         void generateDifferentials();
       } else if (key === "c" && stage === "report") {
@@ -293,7 +267,6 @@ export function DomainWorkspaceClient({
     generateDifferentials,
     generateQuestions,
     generateSynthesis,
-    scrollToSection,
     stage,
   ]);
 
@@ -310,29 +283,24 @@ export function DomainWorkspaceClient({
   return (
     <div className="assessment-root">
       <div className="assessment-shell assessment-shell--wide">
-        <header className="assessment-header">
+        <header className="assessment-header assessment-header--minimal">
           <div className="dm-header-row">
             <div>
-              <p className="assessment-subtitle" style={{ marginBottom: "0.35rem" }}>
+              <p className="dm-breadcrumb">
                 <Link href={`/cases/${episodeId}/domains`}>Domain review</Link>
                 {" · "}
                 <Link href={`/cases/${episodeId}/assessment`}>Finding review</Link>
-              </p>
-              <h1 className="assessment-title">Clinical Synthesis</h1>
-              <p className="assessment-subtitle">
-                Evidence → synthesis → formulation → report. You remain responsible for
-                interpretation.
               </p>
             </div>
             <div className="dm-header-actions">
               <div className="dm-shortcuts-wrap" ref={shortcutsRef}>
                 <button
                   type="button"
-                  className="dm-btn"
+                  className="dm-btn dm-btn--ghost"
                   onClick={() => setShortcutsOpen((v) => !v)}
                   aria-expanded={shortcutsOpen}
                 >
-                  Shortcuts ?
+                  ?
                 </button>
                 {shortcutsOpen && (
                   <div className="dm-shortcuts-popover" aria-label="Keyboard shortcuts">
@@ -348,13 +316,10 @@ export function DomainWorkspaceClient({
                   </div>
                 )}
               </div>
-              <Link href={`/cases/${episodeId}/domains`} className="dm-btn">
-                All domains
-              </Link>
               {!domain.reviewedAt ? (
                 <button
                   type="button"
-                  className="dm-btn dm-btn--primary"
+                  className="dm-btn"
                   onClick={() => void patch({ reviewed: true })}
                   disabled={saving}
                 >
@@ -363,7 +328,7 @@ export function DomainWorkspaceClient({
               ) : (
                 <button
                   type="button"
-                  className="dm-btn"
+                  className="dm-btn dm-btn--ghost"
                   onClick={() => void patch({ reviewed: false })}
                   disabled={saving}
                 >
@@ -377,6 +342,15 @@ export function DomainWorkspaceClient({
         <div className="dm-wrap">
           {error && <div className="assessment-alert">{error}</div>}
 
+          <div className="dm-domain-context">
+            <h1 className="dm-domain-title">{domain.label}</h1>
+            {coverage.expected > 0 && (
+              <p className="dm-domain-coverage">
+                Coverage {coverage.percent}% ({coverage.present} of {coverage.expected} sources)
+              </p>
+            )}
+          </div>
+
           <nav className="dm-stage-tabs" aria-label="Workflow stages">
             {STAGES.map((s) => (
               <button
@@ -389,222 +363,54 @@ export function DomainWorkspaceClient({
               </button>
             ))}
           </nav>
-
-          {stage === "understand" && (
-            <nav className="dm-jump-nav" aria-label="Section navigation">
-              <span className="dm-jump-domain">{domain.label}</span>
-              {coverage.expected > 0 && (
-                <span className="dm-jump-stat">
-                  Coverage {coverage.percent}% ({coverage.present}/{coverage.expected})
-                </span>
-              )}
-              {UNDERSTAND_SECTIONS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="dm-jump-btn"
-                  onClick={() => scrollToSection(s.id)}
-                >
-                  {s.num}. {s.label}
-                </button>
-              ))}
-            </nav>
-          )}
+          <p className="dm-stage-purpose">{activeStage.purpose}</p>
 
           <div className="dm-workspace-layout">
             <div className="dm-reasoning-column">
               {stage === "understand" && (
-                <>
-              <SupportingEvidencePanel
-                domainId={domain.domainId}
-                confirmedFindingCount={domain.confirmedFindingCount}
-                evidenceCount={domain.evidenceCount}
-                sourceTypes={domain.sourceTypes}
-                evidenceBuckets={domain.evidenceBuckets}
-              />
-
-              <section id="section-patterns" className="dm-panel dm-section dm-panel--hero">
-                <p className="dm-section-step">Understanding</p>
-                <div className="dm-panel-head">
-                  <h2 className="dm-panel-title dm-panel-title--lg">Clinical synthesis</h2>
-                  <span className="dm-ai-badge">AI draft</span>
-                </div>
-                <textarea
-                  id="clinical-synthesis"
-                  className="assessment-report-editor dm-synthesis-editor"
-                  value={domain.evidenceSummaryDraft ?? ""}
-                  onChange={(e) => {
-                    setDomain((d) => ({ ...d, evidenceSummaryDraft: e.target.value }));
-                    debouncedPatch({ evidenceSummaryDraft: e.target.value || null });
-                  }}
-                  placeholder="Synthesize themes, functional impact, and strengths…"
-                />
-                <div className="dm-actions">
-                  <button
-                    type="button"
-                    className="dm-btn dm-btn--primary"
-                    onClick={generateSynthesis}
-                    disabled={generatingSynthesis || saving}
-                  >
-                    {generatingSynthesis ? "Generating…" : "Generate clinical synthesis"}
-                  </button>
-                </div>
-              </section>
-
-              <section id="section-opportunities" className="dm-panel dm-section dm-panel--compact">
-                <p className="dm-section-step">Information still needed</p>
-                <h2 className="dm-panel-title">Assessment opportunities</h2>
-                {domain.assessmentOpportunityGroups.length > 0 ? (
-                  <div className="dm-hint-callouts">
-                    {domain.assessmentOpportunityGroups.map((group) =>
-                      group.items.map((item) => (
-                        <div key={`${group.category}-${item}`} className="dm-hint-callout">
-                          <p className="dm-hint-callout-label">{group.label}</p>
-                          <p className="dm-hint-callout-text">&ldquo;{item}&rdquo;</p>
-                        </div>
-                      )),
-                    )}
-                  </div>
-                ) : (
-                  <p className="dm-panel-hint dm-panel-hint--tight">
-                    No additional opportunities identified at this time.
-                  </p>
-                )}
-                <details className="dm-inline-details">
-                  <summary>Clinician notes on opportunities</summary>
-                  <textarea
-                    id="opportunity-notes"
-                    className="assessment-notes dm-inline-textarea"
-                    value={domain.evidenceGapNotes ?? ""}
-                    onChange={(e) => {
-                      setDomain((d) => ({ ...d, evidenceGapNotes: e.target.value }));
-                      debouncedPatch({ evidenceGapNotes: e.target.value || null });
-                    }}
-                  />
-                </details>
-                <details className="dm-inline-details">
-                  <summary>Add evidence note</summary>
-                  <textarea
-                    id="manual-note"
-                    className="assessment-notes dm-inline-textarea"
-                    value={manualNote}
-                    onChange={(e) => setManualNote(e.target.value)}
-                    placeholder="Context not captured in a module…"
-                  />
-                  <div className="dm-actions dm-actions--tight">
-                    <button
-                      type="button"
-                      className="dm-btn"
-                      onClick={() => addManualNote()}
-                      disabled={saving || !manualNote.trim()}
-                    >
-                      Save note
-                    </button>
-                  </div>
-                </details>
-              </section>
-
-              <section id="section-questions" className="dm-panel dm-section dm-panel--compact">
-                <p className="dm-section-step">Questions</p>
-                <h2 className="dm-panel-title">Suggested clinical questions</h2>
-                <div className="dm-actions dm-actions--tight dm-actions--inline">
-                  <button
-                    type="button"
-                    className="dm-btn"
-                    onClick={() => generateQuestions(false)}
-                    disabled={generatingQuestions || saving}
-                  >
-                    {generatingQuestions ? "Generating…" : "Generate questions"}
-                  </button>
-                  <button
-                    type="button"
-                    className="dm-btn dm-btn--ghost"
-                    onClick={() => generateQuestions(true)}
-                    disabled={generatingQuestions || saving}
-                    title="Replace all questions including edited and marked-asked"
-                  >
-                    Replace all
-                  </button>
-                </div>
-
-                <ClinicalQuestionCards
-                  prompts={domain.clinicalQuestionPrompts}
+                <UnderstandStage
+                  domainId={domain.domainId}
+                  confirmedFindingCount={domain.confirmedFindingCount}
+                  evidenceCount={domain.evidenceCount}
+                  sourceTypes={domain.sourceTypes}
+                  evidenceBuckets={domain.evidenceBuckets}
+                  manualNote={manualNote}
                   saving={saving}
-                  onChange={patchQuestions}
+                  onManualNoteChange={setManualNote}
+                  onAddNote={() => void addManualNote()}
                 />
-
-                <div className="dm-inline-add">
-                  <textarea
-                    id="new-question"
-                    className="assessment-notes dm-inline-textarea"
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    placeholder="Add your own question…"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault();
-                        addManualQuestion();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="dm-text-btn"
-                    onClick={addManualQuestion}
-                    disabled={saving || !newQuestion.trim()}
-                  >
-                    Add to list
-                  </button>
-                </div>
-              </section>
-
-              <section id="section-differentials" className="dm-panel dm-section dm-panel--compact">
-                <p className="dm-section-step">Alternative explanations</p>
-                <h2 className="dm-panel-title">Other explanatory factors</h2>
-                <p className="dm-panel-hint dm-panel-hint--tight">
-                  Reasoning prompts — not diagnoses. Select suggestions or write your own.
-                </p>
-
-                <DifferentialPromptList
-                  prompts={differentialPrompts}
-                  selected={selectedAlternatives}
-                  saving={saving}
-                  onToggle={toggleAlternative}
-                  onDismissAll={() => setDifferentialPrompts([])}
-                />
-
-                <textarea
-                  id="alt-exp"
-                  className="assessment-notes dm-alt-notes"
-                  value={altText}
-                  onChange={(e) => setAltText(e.target.value)}
-                  onBlur={commitAlternatives}
-                  placeholder="Your explanatory factors…"
-                />
-
-                <div className="dm-actions dm-actions--tight">
-                  <button
-                    type="button"
-                    className="dm-btn"
-                    onClick={generateDifferentials}
-                    disabled={generatingDifferentials || saving}
-                  >
-                    {generatingDifferentials ? "Generating…" : "Generate differential prompts"}
-                  </button>
-                </div>
-              </section>
-                </>
               )}
 
               {stage === "formulate" && (
-                <FormulationWorkspace
+                <FormulateStage
                   domain={domain}
+                  altText={altText}
+                  differentialPrompts={differentialPrompts}
+                  selectedAlternatives={selectedAlternatives}
+                  newQuestion={newQuestion}
                   saving={saving}
-                  onFormulationChange={patchFormulation}
-                  onGoToUnderstand={() => {
-                    setStage("understand");
-                    scrollToSection("section-patterns");
+                  generatingSynthesis={generatingSynthesis}
+                  generatingQuestions={generatingQuestions}
+                  generatingDifferentials={generatingDifferentials}
+                  onSynthesisChange={(value) => {
+                    setDomain((d) => ({ ...d, evidenceSummaryDraft: value }));
+                    debouncedPatch({ evidenceSummaryDraft: value || null });
                   }}
+                  onGenerateSynthesis={() => void generateSynthesis()}
+                  onGapNotesChange={(value) => {
+                    setDomain((d) => ({ ...d, evidenceGapNotes: value }));
+                    debouncedPatch({ evidenceGapNotes: value || null });
+                  }}
+                  onQuestionsChange={patchQuestions}
+                  onGenerateQuestions={(replaceAll) => void generateQuestions(replaceAll)}
+                  onNewQuestionChange={setNewQuestion}
+                  onAddQuestion={addManualQuestion}
+                  onAltTextChange={setAltText}
+                  onCommitAlternatives={commitAlternatives}
+                  onToggleAlternative={toggleAlternative}
+                  onDismissDifferentialPrompts={() => setDifferentialPrompts([])}
+                  onGenerateDifferentials={() => void generateDifferentials()}
+                  onClinicianNotesChange={patchClinicianNotes}
                 />
               )}
 
@@ -612,14 +418,12 @@ export function DomainWorkspaceClient({
                 <ReportStage
                   summaryDraft={domain.summaryDraft}
                   evidenceSummaryDraft={domain.evidenceSummaryDraft}
-                  clinicalFormulation={domain.clinicalFormulation}
                   saving={saving}
                   onSummaryChange={(value) => {
                     setDomain((d) => ({ ...d, summaryDraft: value || null }));
                     debouncedPatch({ summaryDraft: value || null });
                   }}
                   onCopySynthesisToReport={copySynthesisToReport}
-                  onCopyFormulationSectionToReport={copyFormulationSectionToReport}
                 />
               )}
             </div>

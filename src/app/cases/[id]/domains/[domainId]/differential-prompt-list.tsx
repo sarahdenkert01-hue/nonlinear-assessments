@@ -16,28 +16,19 @@ export function DifferentialPromptList({
   if (prompts.length === 0) return null;
 
   return (
-    <div className="dm-differential-prompts">
-      <div className="dm-differential-prompts-head">
-        <span className="dm-ephemeral-label">Suggested prompts</span>
+    <div className="dm-reasoning-prompts">
+      <div className="dm-reasoning-prompts-head">
+        <span className="dm-ephemeral-label">For consideration</span>
         <span className="dm-ai-badge">AI draft</span>
       </div>
-      <ul className="dm-checklist dm-checklist--compact">
+      <ul className="dm-reasoning-list">
         {prompts.map((prompt) => {
           const active = selected.has(prompt);
           return (
-            <li key={prompt} className={`dm-checklist-item${active ? " dm-checklist-item--done" : ""}`}>
-              <label className="dm-checklist-check">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={() => onToggle(prompt)}
-                  disabled={saving}
-                  aria-label={`Include: ${prompt}`}
-                />
-              </label>
+            <li key={prompt}>
               <button
                 type="button"
-                className="dm-checklist-text dm-checklist-text--btn"
+                className={`dm-reasoning-chip${active ? " dm-reasoning-chip--active" : ""}`}
                 onClick={() => onToggle(prompt)}
                 disabled={saving}
               >

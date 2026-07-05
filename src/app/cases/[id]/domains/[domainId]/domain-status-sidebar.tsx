@@ -14,12 +14,6 @@ const CONFIDENCE_LEVELS: { value: Confidence | null; label: string }[] = [
   { value: "HIGH", label: "High" },
 ];
 
-function excerpt(text: string | null | undefined, max = 220): string | null {
-  const trimmed = text?.trim();
-  if (!trimmed) return null;
-  return trimmed.length > max ? `${trimmed.slice(0, max).trim()}…` : trimmed;
-}
-
 export function DomainStatusSidebar({
   episodeId,
   domain,
@@ -30,19 +24,15 @@ export function DomainStatusSidebar({
   episodeId: string;
   domain: DomainDetail;
   allDomains: DomainSummary[];
-  stage?: WorkspaceStage;
   saving: boolean;
   onPatch: (body: Record<string, unknown>) => void;
-  onStageChange?: (stage: WorkspaceStage) => void;
 }) {
   const nav = getAdjacentReviewableDomains(allDomains, domain.domainId);
   const progress = computeDomainProgress(domain);
-  const synthesisPreview = excerpt(domain.evidenceSummaryDraft);
-  const reportPreview = excerpt(domain.summaryDraft);
 
   return (
     <aside className="dm-report-column">
-      <section className="dm-panel dm-sidebar-panel">
+      <section className="dm-sidebar-panel">
         <h2 className="dm-sidebar-domain">{domain.label}</h2>
 
         <ul className="dm-progress-checklist" aria-label="Domain progress">
@@ -74,24 +64,6 @@ export function DomainStatusSidebar({
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="dm-sidebar-block">
-          <p className="dm-sidebar-label">Clinical synthesis</p>
-          {synthesisPreview ? (
-            <p className="dm-synthesis-preview">{synthesisPreview}</p>
-          ) : (
-            <p className="dm-sidebar-empty">Not drafted yet</p>
-          )}
-        </div>
-
-        <div className="dm-sidebar-block">
-          <p className="dm-sidebar-label">Final clinician wording</p>
-          {reportPreview ? (
-            <p className="dm-synthesis-preview">{reportPreview}</p>
-          ) : (
-            <p className="dm-sidebar-empty">Not written yet</p>
-          )}
         </div>
 
         <nav className="dm-domain-nav" aria-label="Domain navigation">

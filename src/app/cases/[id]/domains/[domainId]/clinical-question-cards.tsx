@@ -11,7 +11,6 @@ export function ClinicalQuestionCards({
   prompts: ClinicalQuestionPrompt[];
   saving: boolean;
   onChange: (next: ClinicalQuestionPrompt[]) => void;
-  onAddToEvidence?: (excerpt: string) => Promise<void>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -20,7 +19,7 @@ export function ClinicalQuestionCards({
     onChange(prompts.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
 
-  const dismissPrompt = (id: string) => {
+  const deletePrompt = (id: string) => {
     onChange(prompts.filter((p) => p.id !== id));
   };
 
@@ -46,46 +45,28 @@ export function ClinicalQuestionCards({
 
   if (prompts.length === 0) {
     return (
-      <p className="dm-panel-hint dm-panel-hint--tight">
-        Generate prompts or add your own — they append to this working list.
+      <p className="dm-section-lead">
+        Generate prompts or add your own — new prompts append to this list.
       </p>
     );
   }
 
   return (
-    <ul className="dm-checklist">
+    <div className="dm-prompt-cards">
       {prompts.map((prompt) => (
-        <li
-          key={prompt.id}
-          className={`dm-checklist-item${prompt.askedAt ? " dm-checklist-item--done" : ""}`}
-        >
-          <label className="dm-checklist-check">
-            <input
-              type="checkbox"
-              checked={Boolean(prompt.askedAt)}
-              onChange={() =>
-                updatePrompt(prompt.id, {
-                  askedAt: prompt.askedAt ? null : new Date().toISOString(),
-                })
-              }
-              disabled={saving}
-              aria-label={prompt.askedAt ? "Mark as not yet asked" : "Mark as asked"}
-            />
-          </label>
-
+        <article key={prompt.id} className="dm-prompt-card">
           {editingId === prompt.id ? (
             <textarea
-              className="dm-checklist-edit"
+              className="dm-prompt-card-edit"
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               onBlur={() => commitEdit(prompt.id)}
               autoFocus
             />
           ) : (
-            <span className="dm-checklist-text">{prompt.text}</span>
+            <p className="dm-prompt-card-text">{prompt.text}</p>
           )}
-
-          <div className="dm-checklist-actions">
+          <div className="dm-prompt-card-actions">
             <button
               type="button"
               className="dm-text-btn"
@@ -105,14 +86,14 @@ export function ClinicalQuestionCards({
             <button
               type="button"
               className="dm-text-btn dm-text-btn--muted"
-              onClick={() => dismissPrompt(prompt.id)}
+              onClick={() => deletePrompt(prompt.id)}
               disabled={saving}
             >
-              Dismiss
+              Delete
             </button>
           </div>
-        </li>
+        </article>
       ))}
-    </ul>
+    </div>
   );
 }
