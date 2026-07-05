@@ -32,18 +32,24 @@ describe("getAdjacentReviewableDomains", () => {
 });
 
 describe("computeDomainProgress", () => {
-  it("uses compact checklist labels", () => {
+  it("tracks formulation and report milestones", () => {
     const progress = computeDomainProgress({
       hasConfirmedFindings: true,
       evidenceSummaryDraft: "Draft",
-      clinicalQuestionPrompts: [{ askedAt: null }],
+      clinicalFormulation: {
+        coreUnderstanding: "Something",
+        functionalImpact: null,
+        strengthsAdaptiveStrategies: null,
+        remainingUncertainty: null,
+        clinicalConsiderations: null,
+      },
       summaryDraft: null,
     });
     expect(progress.steps.map((s) => s.label)).toEqual([
       "Evidence reviewed",
       "Synthesis drafted",
-      "Questions explored",
-      "Report complete",
+      "Formulation complete",
+      "Report written",
     ]);
     expect(progress.steps.filter((s) => s.done)).toHaveLength(3);
   });

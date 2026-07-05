@@ -14,6 +14,12 @@ const CONFIDENCE_LEVELS: { value: Confidence | null; label: string }[] = [
   { value: "HIGH", label: "High" },
 ];
 
+function excerpt(text: string | null | undefined, max = 120): string | null {
+  const trimmed = text?.trim();
+  if (!trimmed) return null;
+  return trimmed.length > max ? `${trimmed.slice(0, max).trim()}…` : trimmed;
+}
+
 export function DomainStatusSidebar({
   episodeId,
   domain,
@@ -29,19 +35,21 @@ export function DomainStatusSidebar({
 }) {
   const nav = getAdjacentReviewableDomains(allDomains, domain.domainId);
   const progress = computeDomainProgress(domain);
+  const synthesisPreview = excerpt(domain.evidenceSummaryDraft);
+  const reportPreview = excerpt(domain.summaryDraft);
 
   return (
     <aside className="dm-report-column">
       <section className="dm-sidebar-panel">
         <h2 className="dm-sidebar-domain">{domain.label}</h2>
 
-        <ul className="dm-progress-checklist" aria-label="Domain progress">
+        <ul className="dm-progress-tracker" aria-label="Domain progress">
           {progress.steps.map((step) => (
             <li
               key={step.label}
-              className={`dm-progress-check-item${step.done ? " dm-progress-check-item--done" : ""}`}
+              className={`dm-progress-tracker-item${step.done ? " dm-progress-tracker-item--done" : ""}`}
             >
-              <span className="dm-progress-check-icon" aria-hidden="true">
+              <span className="dm-progress-tracker-icon" aria-hidden="true">
                 {step.done ? "✓" : "○"}
               </span>
               {step.label}
@@ -50,7 +58,7 @@ export function DomainStatusSidebar({
         </ul>
 
         <div className="dm-sidebar-block">
-          <label className="dm-sidebar-label">Clinical confidence</label>
+          <span className="dm-sidebar-label">Clinical confidence</span>
           <div className="dm-conf dm-conf--full" role="group" aria-label="Clinical confidence">
             {CONFIDENCE_LEVELS.map((opt) => (
               <button
@@ -66,26 +74,38 @@ export function DomainStatusSidebar({
           </div>
         </div>
 
+        <div className="dm-sidebar-mini">
+          <span className="dm-sidebar-label">Synthesis</span>
+          <p className="dm-sidebar-mini-text">
+            {synthesisPreview ?? "Not drafted"}
+          </p>
+        </div>
+
+        <div className="dm-sidebar-mini">
+          <span className="dm-sidebar-label">Report</span>
+          <p className="dm-sidebar-mini-text">{reportPreview ?? "Not written"}</p>
+        </div>
+
         <nav className="dm-domain-nav" aria-label="Domain navigation">
           {nav.prev ? (
             <Link
               href={`/cases/${episodeId}/domains/${nav.prev.domainId}`}
-              className="dm-btn dm-domain-nav-btn"
+              className="dm-btn dm-btn--ghost dm-domain-nav-btn"
             >
-              ← {nav.prev.label}
+              ← Prev
             </Link>
           ) : (
             <span className="dm-domain-nav-spacer" />
           )}
           <span className="dm-domain-nav-count">
-            {nav.total > 0 ? `${nav.index} / ${nav.total}` : "—"}
+            {nav.total > 0 ? `${nav.index}/${nav.total}` : "—"}
           </span>
           {nav.next ? (
             <Link
               href={`/cases/${episodeId}/domains/${nav.next.domainId}`}
-              className="dm-btn dm-domain-nav-btn"
+              className="dm-btn dm-btn--primary dm-domain-nav-btn"
             >
-              {nav.next.label} →
+              Next →
             </Link>
           ) : (
             <span className="dm-domain-nav-spacer" />

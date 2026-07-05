@@ -22,8 +22,6 @@ const STAGES: { id: WorkspaceStage; label: string; purpose: string }[] = [
 
 const SHORTCUTS = [
   { keys: ["G"], action: "Generate synthesis draft (Formulate)" },
-  { keys: ["Q"], action: "Generate interview prompts (Formulate)" },
-  { keys: ["D"], action: "Generate reasoning prompts (Formulate)" },
   { keys: ["C"], action: "Copy synthesis (Report)" },
 ];
 
@@ -47,6 +45,7 @@ export function DomainWorkspaceClient({
   const [differentialPrompts, setDifferentialPrompts] = useState<string[]>([]);
   const [manualNote, setManualNote] = useState("");
   const [newQuestion, setNewQuestion] = useState("");
+  const [reportLastEditedAt, setReportLastEditedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [generatingSynthesis, setGeneratingSynthesis] = useState(false);
@@ -72,6 +71,9 @@ export function DomainWorkspaceClient({
         const data = await parseApiResponse<{ domain?: DomainDetail; error?: string }>(res);
         if (!res.ok || !data.domain) throw new Error(data.error ?? "Save failed");
         setDomain(data.domain);
+        if ("summaryDraft" in body) {
+          setReportLastEditedAt(new Date().toISOString());
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Save failed");
       } finally {
@@ -91,16 +93,12 @@ export function DomainWorkspaceClient({
     [debouncedPatch],
   );
 
-  const patchClinicianNotes = useCallback(
-    (value: string) => {
-      const next: ClinicalFormulationDraft = {
-        ...domain.clinicalFormulation,
-        clinicalConsiderations: value.trim() ? value : null,
-      };
+  const patchFormulation = useCallback(
+    (next: ClinicalFormulationDraft) => {
       setDomain((d) => ({ ...d, clinicalFormulation: next }));
       debouncedPatch({ clinicalFormulationDraft: next });
     },
-    [debouncedPatch, domain.clinicalFormulation],
+    [debouncedPatch],
   );
 
   const commitAlternatives = useCallback(() => {
@@ -249,12 +247,6 @@ export function DomainWorkspaceClient({
       if (key === "g" && stage === "formulate") {
         e.preventDefault();
         void generateSynthesis();
-      } else if (key === "q" && stage === "formulate") {
-        e.preventDefault();
-        void generateQuestions(false);
-      } else if (key === "d" && stage === "formulate") {
-        e.preventDefault();
-        void generateDifferentials();
       } else if (key === "c" && stage === "report") {
         e.preventDefault();
         copySynthesisToReport();
@@ -262,13 +254,7 @@ export function DomainWorkspaceClient({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    copySynthesisToReport,
-    generateDifferentials,
-    generateQuestions,
-    generateSynthesis,
-    stage,
-  ]);
+  }, [copySynthesisToReport, generateSynthesis, stage]);
 
   useEffect(() => {
     if (!shortcutsOpen) return;
@@ -281,17 +267,15 @@ export function DomainWorkspaceClient({
   }, [shortcutsOpen]);
 
   return (
-    <div className="assessment-root">
+    <div className={`assessment-root dm-stage-root dm-stage-root--${stage}`}>
       <div className="assessment-shell assessment-shell--wide">
         <header className="assessment-header assessment-header--minimal">
           <div className="dm-header-row">
-            <div>
-              <p className="dm-breadcrumb">
-                <Link href={`/cases/${episodeId}/domains`}>Domain review</Link>
-                {" · "}
-                <Link href={`/cases/${episodeId}/assessment`}>Finding review</Link>
-              </p>
-            </div>
+            <p className="dm-breadcrumb">
+              <Link href={`/cases/${episodeId}/domains`}>Domain review</Link>
+              {" · "}
+              <Link href={`/cases/${episodeId}/assessment`}>Finding review</Link>
+            </p>
             <div className="dm-header-actions">
               <div className="dm-shortcuts-wrap" ref={shortcutsRef}>
                 <button
@@ -304,7 +288,7 @@ export function DomainWorkspaceClient({
                 </button>
                 {shortcutsOpen && (
                   <div className="dm-shortcuts-popover" aria-label="Keyboard shortcuts">
-                    <p className="dm-shortcuts-title">Keyboard shortcuts</p>
+                    <p className="dm-shortcuts-title">Shortcuts</p>
                     <ul className="dm-shortcuts-list">
                       {SHORTCUTS.map((row) => (
                         <li key={row.action} className="dm-shortcuts-row">
@@ -319,7 +303,7 @@ export function DomainWorkspaceClient({
               {!domain.reviewedAt ? (
                 <button
                   type="button"
-                  className="dm-btn"
+                  className="dm-btn dm-btn--primary"
                   onClick={() => void patch({ reviewed: true })}
                   disabled={saving}
                 >
@@ -342,31 +326,35 @@ export function DomainWorkspaceClient({
         <div className="dm-wrap">
           {error && <div className="assessment-alert">{error}</div>}
 
-          <div className="dm-domain-context">
-            <h1 className="dm-domain-title">{domain.label}</h1>
-            {coverage.expected > 0 && (
-              <p className="dm-domain-coverage">
-                Coverage {coverage.percent}% ({coverage.present} of {coverage.expected} sources)
-              </p>
-            )}
+          <div className="dm-sticky-chrome">
+            <div className="dm-domain-context">
+              <h1 className="dm-domain-title">{domain.label}</h1>
+              {coverage.expected > 0 && (
+                <p className="dm-domain-coverage">
+                  Coverage {coverage.percent}% ({coverage.present} of {coverage.expected} sources)
+                </p>
+              )}
+            </div>
+
+            <nav className="dm-stage-tabs" aria-label="Workflow stages">
+              {STAGES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
+                  onClick={() => setStage(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </nav>
+            <p className="dm-stage-purpose">{activeStage.purpose}</p>
           </div>
 
-          <nav className="dm-stage-tabs" aria-label="Workflow stages">
-            {STAGES.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
-                onClick={() => setStage(s.id)}
-              >
-                {s.label}
-              </button>
-            ))}
-          </nav>
-          <p className="dm-stage-purpose">{activeStage.purpose}</p>
-
-          <div className="dm-workspace-layout">
-            <div className="dm-reasoning-column">
+          <div
+            className={`dm-workspace-layout${stage === "report" ? " dm-workspace-layout--report" : ""}${stage === "formulate" ? " dm-workspace-layout--formulate" : ""}`}
+          >
+            <div className={`dm-reasoning-column dm-stage-surface dm-stage-surface--${stage}`}>
               {stage === "understand" && (
                 <UnderstandStage
                   domainId={domain.domainId}
@@ -392,15 +380,12 @@ export function DomainWorkspaceClient({
                   generatingSynthesis={generatingSynthesis}
                   generatingQuestions={generatingQuestions}
                   generatingDifferentials={generatingDifferentials}
+                  onFormulationChange={patchFormulation}
                   onSynthesisChange={(value) => {
                     setDomain((d) => ({ ...d, evidenceSummaryDraft: value }));
                     debouncedPatch({ evidenceSummaryDraft: value || null });
                   }}
                   onGenerateSynthesis={() => void generateSynthesis()}
-                  onGapNotesChange={(value) => {
-                    setDomain((d) => ({ ...d, evidenceGapNotes: value }));
-                    debouncedPatch({ evidenceGapNotes: value || null });
-                  }}
                   onQuestionsChange={patchQuestions}
                   onGenerateQuestions={(replaceAll) => void generateQuestions(replaceAll)}
                   onNewQuestionChange={setNewQuestion}
@@ -410,7 +395,6 @@ export function DomainWorkspaceClient({
                   onToggleAlternative={toggleAlternative}
                   onDismissDifferentialPrompts={() => setDifferentialPrompts([])}
                   onGenerateDifferentials={() => void generateDifferentials()}
-                  onClinicianNotesChange={patchClinicianNotes}
                 />
               )}
 
@@ -419,6 +403,7 @@ export function DomainWorkspaceClient({
                   summaryDraft={domain.summaryDraft}
                   evidenceSummaryDraft={domain.evidenceSummaryDraft}
                   saving={saving}
+                  lastEditedAt={reportLastEditedAt}
                   onSummaryChange={(value) => {
                     setDomain((d) => ({ ...d, summaryDraft: value || null }));
                     debouncedPatch({ summaryDraft: value || null });
@@ -428,13 +413,15 @@ export function DomainWorkspaceClient({
               )}
             </div>
 
-            <DomainStatusSidebar
-              episodeId={episodeId}
-              domain={domain}
-              allDomains={allDomains}
-              saving={saving}
-              onPatch={(body) => void patch(body)}
-            />
+            {stage !== "formulate" && (
+              <DomainStatusSidebar
+                episodeId={episodeId}
+                domain={domain}
+                allDomains={allDomains}
+                saving={saving}
+                onPatch={(body) => void patch(body)}
+              />
+            )}
           </div>
         </div>
       </div>

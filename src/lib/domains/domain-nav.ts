@@ -1,5 +1,6 @@
+import { hasFormulationStarted } from "./clinical-formulation";
 import { getAllDomains } from "./registry";
-import type { DomainSummary } from "./types";
+import type { ClinicalFormulationDraft, DomainSummary } from "./types";
 
 export function getReviewableDomainNav(domains: DomainSummary[]): DomainSummary[] {
   return getAllDomains()
@@ -24,19 +25,15 @@ export function getAdjacentReviewableDomains(
 export function computeDomainProgress(domain: {
   hasConfirmedFindings: boolean;
   evidenceSummaryDraft: string | null;
-  clinicalQuestionPrompts: { askedAt: string | null }[];
+  clinicalFormulation: ClinicalFormulationDraft;
   summaryDraft: string | null;
 }): { steps: { done: boolean; label: string }[] } {
-  const questionsExplored =
-    domain.clinicalQuestionPrompts.length > 0 ||
-    domain.clinicalQuestionPrompts.some((q) => q.askedAt);
-
   return {
     steps: [
       { done: domain.hasConfirmedFindings, label: "Evidence reviewed" },
       { done: Boolean(domain.evidenceSummaryDraft?.trim()), label: "Synthesis drafted" },
-      { done: questionsExplored, label: "Questions explored" },
-      { done: Boolean(domain.summaryDraft?.trim()), label: "Report complete" },
+      { done: hasFormulationStarted(domain.clinicalFormulation), label: "Formulation complete" },
+      { done: Boolean(domain.summaryDraft?.trim()), label: "Report written" },
     ],
   };
 }
