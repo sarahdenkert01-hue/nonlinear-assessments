@@ -42,6 +42,7 @@ export interface DomainSummary {
   confidence: Confidence | null;
   reviewedAt: string | null;
   hasConfirmedFindings: boolean;
+  hasFormulationStarted: boolean;
 }
 
 export interface ClinicalQuestionPrompt {
@@ -49,6 +50,14 @@ export interface ClinicalQuestionPrompt {
   text: string;
   askedAt: string | null;
   note: string | null;
+}
+
+export interface ClinicalFormulationDraft {
+  coreUnderstanding: string | null;
+  functionalImpact: string | null;
+  strengthsAdaptiveStrategies: string | null;
+  remainingUncertainty: string | null;
+  clinicalConsiderations: string | null;
 }
 
 export interface GroupedAssessmentOpportunities {
@@ -76,6 +85,7 @@ export interface DomainDetail extends DomainSummary {
   clinicalQuestionPrompts: ClinicalQuestionPrompt[];
   assessmentOpportunityGroups: GroupedAssessmentOpportunities[];
   evidenceBuckets: EvidenceBucketView[];
+  clinicalFormulation: ClinicalFormulationDraft;
   summaryDraft: string | null;
   findings: DomainFindingRef[];
   evidence: DomainEvidenceItem[];
@@ -89,6 +99,7 @@ export interface UpdateDomainReviewInput {
   evidenceSummaryDraft?: string | null;
   suggestedQuestionsDraft?: string | null;
   clinicalQuestionPrompts?: ClinicalQuestionPrompt[];
+  clinicalFormulationDraft?: ClinicalFormulationDraft;
   summaryDraft?: string | null;
   reviewed?: boolean;
 }

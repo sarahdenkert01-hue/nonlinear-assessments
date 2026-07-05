@@ -19,6 +19,10 @@ import {
 import { getAllDomains, getDomainById, getDomainsForTheme } from "./registry";
 import { generateDomainEvidenceSummary } from "./synthesize-summary";
 import {
+  hasFormulationStarted,
+  resolveClinicalFormulationDraft,
+} from "./clinical-formulation";
+import {
   buildQuestionsContextFromDetail,
   generateSuggestedQuestions,
 } from "./generate-questions";
@@ -53,6 +57,10 @@ function buildSummary(
   const findingEvidence = evidence.filter((e) => e.findingId);
   const sourceTypes = toSourceTypes(evidence);
   const hasAnyEvidence = evidence.length > 0;
+  const formulation = resolveClinicalFormulationDraft(
+    review?.clinicalFormulationDraft,
+    review?.clinicalNotes ?? null,
+  );
 
   return {
     domainId,
@@ -65,6 +73,7 @@ function buildSummary(
     confidence: review?.confidence ?? null,
     reviewedAt: review?.reviewedAt?.toISOString() ?? null,
     hasConfirmedFindings: findingEvidence.length > 0,
+    hasFormulationStarted: hasFormulationStarted(formulation),
   };
 }
 
@@ -216,6 +225,10 @@ export async function getDomainDetailForEpisode(
   const evidenceItems = buildEvidenceItems(reviewEvidence, findingRefs);
   const sourceTypes = toSourceTypes(reviewEvidence);
   const hasAnyEvidence = reviewEvidence.length > 0;
+  const clinicalFormulation = resolveClinicalFormulationDraft(
+    review?.clinicalFormulationDraft,
+    review?.clinicalNotes ?? null,
+  );
 
   return {
     ...buildSummary(review, domainId, findingSignals),
@@ -232,6 +245,7 @@ export async function getDomainDetailForEpisode(
       computeAssessmentOpportunities(domainId, sourceTypes, hasAnyEvidence, findingSignals),
     ),
     evidenceBuckets: groupEvidenceByBucket(findings, evidenceItems),
+    clinicalFormulation,
     summaryDraft: review?.summaryDraft ?? null,
     findings,
     evidence: evidenceItems,
@@ -253,6 +267,11 @@ export async function updateDomainReview(
 
   await ensureDomainEvidenceForEpisode(episodeId);
 
+  const formulationNotes =
+    input.clinicalFormulationDraft?.clinicalConsiderations !== undefined
+      ? input.clinicalFormulationDraft.clinicalConsiderations
+      : undefined;
+
   await prisma.domainReview.upsert({
     where: { episodeId_domainId: { episodeId, domainId } },
     create: {
@@ -263,6 +282,7 @@ export async function updateDomainReview(
         ? { alternativeExplanations: input.alternativeExplanations }
         : {}),
       ...(input.clinicalNotes !== undefined ? { clinicalNotes: input.clinicalNotes } : {}),
+      ...(formulationNotes !== undefined ? { clinicalNotes: formulationNotes } : {}),
       ...(input.evidenceGapNotes !== undefined
         ? { evidenceGapNotes: input.evidenceGapNotes }
         : {}),
@@ -274,6 +294,12 @@ export async function updateDomainReview(
         : {}),
       ...(input.clinicalQuestionPrompts !== undefined
         ? { clinicalQuestionPrompts: input.clinicalQuestionPrompts as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(input.clinicalFormulationDraft !== undefined
+        ? {
+            clinicalFormulationDraft:
+              input.clinicalFormulationDraft as unknown as Prisma.InputJsonValue,
+          }
         : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),
@@ -285,6 +311,7 @@ export async function updateDomainReview(
         ? { alternativeExplanations: input.alternativeExplanations }
         : {}),
       ...(input.clinicalNotes !== undefined ? { clinicalNotes: input.clinicalNotes } : {}),
+      ...(formulationNotes !== undefined ? { clinicalNotes: formulationNotes } : {}),
       ...(input.evidenceGapNotes !== undefined
         ? { evidenceGapNotes: input.evidenceGapNotes }
         : {}),
@@ -296,6 +323,12 @@ export async function updateDomainReview(
         : {}),
       ...(input.clinicalQuestionPrompts !== undefined
         ? { clinicalQuestionPrompts: input.clinicalQuestionPrompts as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(input.clinicalFormulationDraft !== undefined
+        ? {
+            clinicalFormulationDraft:
+              input.clinicalFormulationDraft as unknown as Prisma.InputJsonValue,
+          }
         : {}),
       ...(input.summaryDraft !== undefined ? { summaryDraft: input.summaryDraft } : {}),
       ...(input.reviewed === true ? { reviewedAt: new Date() } : {}),

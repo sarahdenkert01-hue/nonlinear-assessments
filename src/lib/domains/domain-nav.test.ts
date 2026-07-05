@@ -14,6 +14,7 @@ function summary(id: string, active: boolean): DomainSummary {
     confidence: null,
     reviewedAt: null,
     hasConfirmedFindings: active,
+    hasFormulationStarted: false,
   };
 }
 

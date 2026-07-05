@@ -5,6 +5,8 @@ import { computeDomainProgress, getAdjacentReviewableDomains } from "@/lib/domai
 import type { DomainDetail, DomainSummary } from "@/lib/domains/types";
 import type { Confidence } from "@/lib/findings/types";
 
+export type WorkspaceStage = "understand" | "formulate" | "report";
+
 const CONFIDENCE_LEVELS: { value: Confidence | null; label: string }[] = [
   { value: null, label: "—" },
   { value: "LOW", label: "Low" },
@@ -12,45 +14,54 @@ const CONFIDENCE_LEVELS: { value: Confidence | null; label: string }[] = [
   { value: "HIGH", label: "High" },
 ];
 
-function synthesisPreview(text: string | null, maxLen = 320): string {
-  const trimmed = text?.trim();
-  if (!trimmed) return "";
-  if (trimmed.length <= maxLen) return trimmed;
-  return `${trimmed.slice(0, maxLen).trim()}…`;
-}
-
-export function SynthesisSidebar({
+export function DomainStatusSidebar({
   episodeId,
   domain,
   allDomains,
+  stage,
   saving,
   onPatch,
-  onCopySynthesisToReport,
-  onScrollToSynthesis,
+  onStageChange,
 }: {
   episodeId: string;
   domain: DomainDetail;
   allDomains: DomainSummary[];
+  stage: WorkspaceStage;
   saving: boolean;
   onPatch: (body: Record<string, unknown>) => void;
-  onCopySynthesisToReport: () => void;
-  onScrollToSynthesis: () => void;
+  onStageChange: (stage: WorkspaceStage) => void;
 }) {
   const nav = getAdjacentReviewableDomains(allDomains, domain.domainId);
   const progress = computeDomainProgress(domain);
-  const preview = synthesisPreview(domain.evidenceSummaryDraft);
 
   return (
-    <aside id="section-report" className="dm-report-column">
-      <section className="dm-panel dm-section dm-report-panel dm-sidebar-panel">
+    <aside className="dm-report-column">
+      <section className="dm-panel dm-section dm-sidebar-panel">
         <div className="dm-sidebar-head">
           <h2 className="dm-sidebar-domain">{domain.label}</h2>
-          <span
-            className={`dm-badge${domain.reviewedAt ? " dm-badge--reviewed" : ""}`}
-          >
+          <span className={`dm-badge${domain.reviewedAt ? " dm-badge--reviewed" : ""}`}>
             {progress.label}
           </span>
         </div>
+
+        <nav className="dm-stage-nav-mini" aria-label="Workflow stage">
+          {(
+            [
+              { id: "understand" as const, label: "Understand" },
+              { id: "formulate" as const, label: "Formulate" },
+              { id: "report" as const, label: "Report" },
+            ] as const
+          ).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`dm-stage-nav-mini-btn${stage === s.id ? " dm-stage-nav-mini-btn--active" : ""}`}
+              onClick={() => onStageChange(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
 
         <ul className="dm-progress-steps">
           {progress.steps.map((step) => (
@@ -76,56 +87,6 @@ export function SynthesisSidebar({
               {opt.label}
             </button>
           ))}
-        </div>
-
-        <div className="dm-sidebar-block">
-          <div className="dm-sidebar-block-head">
-            <span className="dm-field-label" style={{ margin: 0 }}>
-              Clinical synthesis preview
-            </span>
-            <button type="button" className="dm-link-btn" onClick={onScrollToSynthesis}>
-              Edit ↗
-            </button>
-          </div>
-          {preview ? (
-            <p className="dm-synthesis-preview">{preview}</p>
-          ) : (
-            <p className="dm-panel-hint" style={{ margin: 0 }}>
-              No synthesis drafted yet.
-            </p>
-          )}
-        </div>
-
-        <div className="dm-sidebar-block">
-          <p className="dm-question-label">6. What belongs in the report?</p>
-          <h2 className="dm-panel-title">Report draft</h2>
-          <p className="dm-panel-hint">How should I communicate this?</p>
-          <textarea
-            id="summary-draft"
-            className="assessment-report-editor"
-            style={{ minHeight: "9rem" }}
-            value={domain.summaryDraft ?? ""}
-            onChange={(e) =>
-              onPatch({ summaryDraft: e.target.value || null })
-            }
-            placeholder="Clinician-owned report language…"
-          />
-          <div className="dm-actions">
-            <button
-              type="button"
-              className="dm-btn dm-btn--primary"
-              onClick={onCopySynthesisToReport}
-              disabled={saving || !domain.evidenceSummaryDraft?.trim()}
-            >
-              Copy clinical synthesis → report draft
-            </button>
-          </div>
-          {domain.summaryDraft?.trim() ? (
-            <div className="dm-report-preview" aria-label="Report preview">
-              <div className="dm-report-preview-label">Preview</div>
-              <div className="dm-report-preview-body">{domain.summaryDraft}</div>
-            </div>
-          ) : null}
         </div>
 
         <div className="dm-domain-nav">

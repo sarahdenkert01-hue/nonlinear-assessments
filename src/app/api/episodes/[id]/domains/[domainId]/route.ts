@@ -10,6 +10,7 @@ import {
   type UpdateDomainReviewInput,
 } from "@/lib/domains";
 import { parseClinicalQuestionPrompts } from "@/lib/domains/clinical-questions";
+import { parseClinicalFormulationDraft } from "@/lib/domains/clinical-formulation";
 import type { ClinicalQuestionPrompt } from "@/lib/domains/types";
 
 type RouteContext = { params: Promise<{ id: string; domainId: string }> };
@@ -94,6 +95,13 @@ export async function PATCH(request: Request, context: RouteContext) {
       input.clinicalQuestionPrompts = parseClinicalQuestionPrompts(
         body.clinicalQuestionPrompts,
       ) as ClinicalQuestionPrompt[];
+    }
+
+    if ("clinicalFormulationDraft" in body) {
+      if (!body.clinicalFormulationDraft || typeof body.clinicalFormulationDraft !== "object") {
+        return jsonError("clinicalFormulationDraft must be an object", 400);
+      }
+      input.clinicalFormulationDraft = parseClinicalFormulationDraft(body.clinicalFormulationDraft);
     }
 
     if ("summaryDraft" in body) {

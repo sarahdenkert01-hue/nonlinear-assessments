@@ -227,6 +227,7 @@ model DomainReview {
   evidenceSummaryDraft    String?
   suggestedQuestionsDraft String?
   clinicalQuestionPrompts Json?
+  clinicalFormulationDraft Json?
   summaryDraft            String?
   reviewedAt              DateTime?
   createdAt               DateTime            @default(now())

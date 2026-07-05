@@ -40,6 +40,9 @@ function DomainRow({ episodeId, domain }: { episodeId: string; domain: DomainSum
           {domain.reviewedAt && (
             <span className="dm-badge dm-badge--reviewed">Reviewed</span>
           )}
+          {domain.hasFormulationStarted && !domain.reviewedAt && (
+            <span className="dm-badge">Formulation</span>
+          )}
         </div>
       </div>
     </Link>

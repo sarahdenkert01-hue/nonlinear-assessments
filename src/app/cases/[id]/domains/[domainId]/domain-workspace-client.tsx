@@ -5,22 +5,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import { computeEvidenceCoverage } from "@/lib/domains";
-import type { ClinicalQuestionPrompt, DomainDetail, DomainSummary } from "@/lib/domains/types";
+import type { ClinicalFormulationDraft, ClinicalQuestionPrompt, DomainDetail, DomainSummary } from "@/lib/domains/types";
 import { createQuestionPrompt } from "@/lib/domains/clinical-questions";
 import "@/features/assessments/components/assessment.css";
 import "../domains.css";
 import { ClinicalQuestionCards } from "./clinical-question-cards";
+import { DomainStatusSidebar, type WorkspaceStage } from "./domain-status-sidebar";
+import { FormulationWorkspace } from "./formulation-workspace";
+import { ReportStage } from "./report-stage";
 import { SupportingEvidencePanel } from "./supporting-evidence-panel";
-import { SynthesisSidebar } from "./synthesis-sidebar";
 
-const SECTIONS = [
+const UNDERSTAND_SECTIONS = [
   { id: "section-know", num: "1", label: "Know" },
   { id: "section-patterns", num: "2", label: "Pattern" },
   { id: "section-opportunities", num: "3", label: "Strengthen" },
   { id: "section-questions", num: "4", label: "Ask" },
   { id: "section-differentials", num: "5", label: "Else" },
-  { id: "section-report", num: "6", label: "Report" },
 ] as const;
+
+const STAGES: { id: WorkspaceStage; label: string }[] = [
+  { id: "understand", label: "Understand" },
+  { id: "formulate", label: "Formulate" },
+  { id: "report", label: "Report" },
+];
 
 const SHORTCUTS = [
   { keys: ["1", "6"], action: "Jump to section" },
@@ -56,6 +63,7 @@ export function DomainWorkspaceClient({
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [generatingDifferentials, setGeneratingDifferentials] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [stage, setStage] = useState<WorkspaceStage>("understand");
   const shortcutsRef = useRef<HTMLDivElement>(null);
 
   const coverage = computeEvidenceCoverage(domain.domainId, domain.sourceTypes);
@@ -88,6 +96,14 @@ export function DomainWorkspaceClient({
     (prompts: ClinicalQuestionPrompt[]) => {
       setDomain((d) => ({ ...d, clinicalQuestionPrompts: prompts }));
       debouncedPatch({ clinicalQuestionPrompts: prompts });
+    },
+    [debouncedPatch],
+  );
+
+  const patchFormulation = useCallback(
+    (next: ClinicalFormulationDraft) => {
+      setDomain((d) => ({ ...d, clinicalFormulation: next }));
+      debouncedPatch({ clinicalFormulationDraft: next });
     },
     [debouncedPatch],
   );
@@ -166,6 +182,16 @@ export function DomainWorkspaceClient({
     }
   }, [episodeId, domain.domainId]);
 
+  const copyFormulationSectionToReport = useCallback(
+    (text: string) => {
+      const existing = domain.summaryDraft?.trim();
+      const next = existing ? `${existing}\n\n${text.trim()}` : text.trim();
+      setDomain((d) => ({ ...d, summaryDraft: next }));
+      void patch({ summaryDraft: next });
+    },
+    [domain.summaryDraft, patch],
+  );
+
   const copySynthesisToReport = useCallback(() => {
     const next = domain.evidenceSummaryDraft?.trim();
     if (!next) return;
@@ -231,9 +257,9 @@ export function DomainWorkspaceClient({
         return;
       }
       const num = Number(e.key);
-      if (num >= 1 && num <= 6) {
+      if (num >= 1 && num <= 5 && stage === "understand") {
         e.preventDefault();
-        scrollToSection(SECTIONS[num - 1]!.id);
+        scrollToSection(UNDERSTAND_SECTIONS[num - 1]!.id);
         return;
       }
       const key = e.key.toLowerCase();
@@ -246,7 +272,7 @@ export function DomainWorkspaceClient({
       } else if (key === "d") {
         e.preventDefault();
         void generateDifferentials();
-      } else if (key === "c") {
+      } else if (key === "c" && stage === "report") {
         e.preventDefault();
         copySynthesisToReport();
       }
@@ -259,6 +285,7 @@ export function DomainWorkspaceClient({
     generateQuestions,
     generateSynthesis,
     scrollToSection,
+    stage,
   ]);
 
   useEffect(() => {
@@ -284,8 +311,8 @@ export function DomainWorkspaceClient({
               </p>
               <h1 className="assessment-title">Clinical Synthesis</h1>
               <p className="assessment-subtitle">
-                Six questions to support actionable clinical reasoning — you remain responsible
-                for interpretation.
+                Evidence → synthesis → formulation → report. You remain responsible for
+                interpretation.
               </p>
             </div>
             <div className="dm-header-actions">
@@ -322,27 +349,44 @@ export function DomainWorkspaceClient({
         <div className="dm-wrap">
           {error && <div className="assessment-alert">{error}</div>}
 
-          <nav className="dm-jump-nav" aria-label="Section navigation">
-            <span className="dm-jump-domain">{domain.label}</span>
-            {coverage.expected > 0 && (
-              <span className="dm-jump-stat">
-                Coverage {coverage.percent}% ({coverage.present}/{coverage.expected})
-              </span>
-            )}
-            {SECTIONS.map((s) => (
+          <nav className="dm-stage-tabs" aria-label="Workflow stages">
+            {STAGES.map((s) => (
               <button
                 key={s.id}
                 type="button"
-                className="dm-jump-btn"
-                onClick={() => scrollToSection(s.id)}
+                className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
+                onClick={() => setStage(s.id)}
               >
-                {s.num}. {s.label}
+                {s.label}
               </button>
             ))}
           </nav>
 
+          {stage === "understand" && (
+            <nav className="dm-jump-nav" aria-label="Section navigation">
+              <span className="dm-jump-domain">{domain.label}</span>
+              {coverage.expected > 0 && (
+                <span className="dm-jump-stat">
+                  Coverage {coverage.percent}% ({coverage.present}/{coverage.expected})
+                </span>
+              )}
+              {UNDERSTAND_SECTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="dm-jump-btn"
+                  onClick={() => scrollToSection(s.id)}
+                >
+                  {s.num}. {s.label}
+                </button>
+              ))}
+            </nav>
+          )}
+
           <div className="dm-workspace-layout">
             <div className="dm-reasoning-column">
+              {stage === "understand" && (
+                <>
               <SupportingEvidencePanel
                 domainId={domain.domainId}
                 confirmedFindingCount={domain.confirmedFindingCount}
@@ -566,45 +610,45 @@ export function DomainWorkspaceClient({
                   </button>
                 </div>
               </section>
+                </>
+              )}
 
-              <details className="dm-collapsed dm-private-notes">
-                <summary>Private clinician notes</summary>
-                <div style={{ padding: "0 1rem 1rem" }}>
-                  <p className="dm-panel-hint">
-                    Not included in synthesis or report. For your working notes only.
-                  </p>
-                  <textarea
-                    id="clinical-notes"
-                    className="assessment-notes"
-                    style={{ minHeight: "4rem" }}
-                    value={domain.clinicalNotes ?? ""}
-                    onChange={(e) => {
-                      setDomain((d) => ({ ...d, clinicalNotes: e.target.value }));
-                      debouncedPatch({ clinicalNotes: e.target.value || null });
-                    }}
-                  />
-                </div>
-              </details>
+              {stage === "formulate" && (
+                <FormulationWorkspace
+                  domain={domain}
+                  saving={saving}
+                  onFormulationChange={patchFormulation}
+                  onGoToUnderstand={() => {
+                    setStage("understand");
+                    scrollToSection("section-patterns");
+                  }}
+                />
+              )}
+
+              {stage === "report" && (
+                <ReportStage
+                  summaryDraft={domain.summaryDraft}
+                  evidenceSummaryDraft={domain.evidenceSummaryDraft}
+                  clinicalFormulation={domain.clinicalFormulation}
+                  saving={saving}
+                  onSummaryChange={(value) => {
+                    setDomain((d) => ({ ...d, summaryDraft: value || null }));
+                    debouncedPatch({ summaryDraft: value || null });
+                  }}
+                  onCopySynthesisToReport={copySynthesisToReport}
+                  onCopyFormulationSectionToReport={copyFormulationSectionToReport}
+                />
+              )}
             </div>
 
-            <SynthesisSidebar
+            <DomainStatusSidebar
               episodeId={episodeId}
               domain={domain}
               allDomains={allDomains}
+              stage={stage}
               saving={saving}
-              onPatch={(body) => {
-                if ("summaryDraft" in body) {
-                  setDomain((d) => ({
-                    ...d,
-                    summaryDraft: (body.summaryDraft as string | null) ?? null,
-                  }));
-                  debouncedPatch(body);
-                  return;
-                }
-                void patch(body);
-              }}
-              onCopySynthesisToReport={copySynthesisToReport}
-              onScrollToSynthesis={() => scrollToSection("section-patterns")}
+              onPatch={(body) => void patch(body)}
+              onStageChange={setStage}
             />
           </div>
         </div>
