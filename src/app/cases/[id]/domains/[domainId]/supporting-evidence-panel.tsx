@@ -17,10 +17,9 @@ export function SupportingEvidencePanel({
   const coverage = computeEvidenceCoverage(domainId, sourceTypes as never);
 
   return (
-    <section id="section-know" className="dm-panel dm-section">
-      <p className="dm-question-label">1. What do we know?</p>
+    <section id="section-know" className="dm-panel dm-section dm-panel--compact">
+      <p className="dm-section-step">Evidence</p>
       <h2 className="dm-panel-title">Supporting evidence</h2>
-      <p className="dm-panel-hint">Descriptive inventory by source — no interpretation yet.</p>
 
       <div className="dm-know-stats">
         <div className="dm-know-stat">

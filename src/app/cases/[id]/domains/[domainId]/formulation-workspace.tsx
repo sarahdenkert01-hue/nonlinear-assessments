@@ -81,18 +81,18 @@ export function FormulationWorkspace({
     <div className="dm-formulate-layout">
       <div className="dm-formulate-main">
         <header className="dm-formulate-header">
-          <p className="dm-question-label">Clinical formulation</p>
-          <h2 className="dm-panel-title">How do you currently understand this domain?</h2>
-          <p className="dm-panel-hint">
+          <p className="dm-section-step">Formulation</p>
+          <h2 className="dm-panel-title dm-panel-title--lg">Clinical formulation</h2>
+          <p className="dm-panel-hint dm-panel-hint--tight">
             How do I currently understand this person&apos;s functioning, and what evidence
-            supports that understanding? Clinician-owned — not diagnostic.
+            supports that understanding?
           </p>
         </header>
 
         {FIELDS.map((field) => (
-          <section key={field.key} className="dm-panel dm-section">
+          <section key={field.key} className="dm-panel dm-section dm-panel--compact">
             <h3 className="dm-panel-title">{field.title}</h3>
-            <p className="dm-panel-hint">{field.hint}</p>
+            <p className="dm-panel-hint dm-panel-hint--tight">{field.hint}</p>
             <textarea
               className="assessment-report-editor"
               style={{ minHeight: "5.5rem" }}

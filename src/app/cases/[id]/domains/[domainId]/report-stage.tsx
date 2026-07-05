@@ -26,18 +26,19 @@ export function ReportStage({
   ].filter((s) => s.text?.trim());
 
   return (
-    <section className="dm-panel dm-section dm-report-panel">
-      <p className="dm-question-label">6. What belongs in the report?</p>
-      <h2 className="dm-panel-title">Report draft</h2>
-      <p className="dm-panel-hint">How should I communicate this? Clinician-owned — never auto-filled.</p>
+    <section className="dm-panel dm-section dm-report-panel dm-report-panel--final">
+      <p className="dm-section-step">Report language</p>
+      <h2 className="dm-panel-title dm-panel-title--lg">Final clinician wording</h2>
+      <p className="dm-panel-hint dm-panel-hint--tight">
+        Source of truth for the report — never auto-filled.
+      </p>
 
       <textarea
         id="summary-draft"
-        className="assessment-report-editor"
-        style={{ minHeight: "12rem" }}
+        className="assessment-report-editor dm-report-editor"
         value={summaryDraft ?? ""}
         onChange={(e) => onSummaryChange(e.target.value)}
-        placeholder="Editable domain summary for the report…"
+        placeholder="Write the domain summary as it should appear in the report…"
         disabled={saving}
       />
 
@@ -48,7 +49,7 @@ export function ReportStage({
           onClick={onCopySynthesisToReport}
           disabled={saving || !evidenceSummaryDraft?.trim()}
         >
-          Copy clinical synthesis → report draft
+          Copy clinical synthesis
         </button>
         {formulationSections.map((section) => (
           <button
@@ -58,17 +59,10 @@ export function ReportStage({
             onClick={() => onCopyFormulationSectionToReport(section.text!)}
             disabled={saving}
           >
-            Copy {section.label.toLowerCase()} → report
+            Copy {section.label.toLowerCase()}
           </button>
         ))}
       </div>
-
-      {summaryDraft?.trim() ? (
-        <div className="dm-report-preview" aria-label="Report preview">
-          <div className="dm-report-preview-label">Preview</div>
-          <div className="dm-report-preview-body">{summaryDraft}</div>
-        </div>
-      ) : null}
     </section>
   );
 }

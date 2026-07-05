@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import type { ClinicalQuestionPrompt } from "@/lib/domains/types";
-import { formatQuestionAsEvidenceNote } from "@/lib/domains/clinical-questions";
 
 export function ClinicalQuestionCards({
   prompts,
   saving,
   onChange,
-  onAddToEvidence,
 }: {
   prompts: ClinicalQuestionPrompt[];
   saving: boolean;
   onChange: (next: ClinicalQuestionPrompt[]) => void;
-  onAddToEvidence: (excerpt: string) => Promise<void>;
+  onAddToEvidence?: (excerpt: string) => Promise<void>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -22,7 +20,7 @@ export function ClinicalQuestionCards({
     onChange(prompts.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
 
-  const deletePrompt = (id: string) => {
+  const dismissPrompt = (id: string) => {
     onChange(prompts.filter((p) => p.id !== id));
   };
 
@@ -38,50 +36,67 @@ export function ClinicalQuestionCards({
     setEditText("");
   };
 
+  const copyPrompt = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
   if (prompts.length === 0) {
     return (
-      <p className="dm-panel-hint" style={{ marginBottom: "0.75rem" }}>
-        No questions yet. Generate prompts or add your own below.
+      <p className="dm-panel-hint dm-panel-hint--tight">
+        Generate prompts or add your own — they append to this working list.
       </p>
     );
   }
 
   return (
-    <div className="dm-question-cards">
+    <ul className="dm-checklist">
       {prompts.map((prompt) => (
-        <article
+        <li
           key={prompt.id}
-          className={`dm-question-card${prompt.askedAt ? " dm-question-card--asked" : ""}`}
+          className={`dm-checklist-item${prompt.askedAt ? " dm-checklist-item--done" : ""}`}
         >
+          <label className="dm-checklist-check">
+            <input
+              type="checkbox"
+              checked={Boolean(prompt.askedAt)}
+              onChange={() =>
+                updatePrompt(prompt.id, {
+                  askedAt: prompt.askedAt ? null : new Date().toISOString(),
+                })
+              }
+              disabled={saving}
+              aria-label={prompt.askedAt ? "Mark as not yet asked" : "Mark as asked"}
+            />
+          </label>
+
           {editingId === prompt.id ? (
             <textarea
-              className="assessment-notes"
-              style={{ minHeight: "3rem", marginBottom: "0.5rem" }}
+              className="dm-checklist-edit"
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               onBlur={() => commitEdit(prompt.id)}
               autoFocus
             />
           ) : (
-            <p className="dm-question-card-text">{prompt.text}</p>
+            <span className="dm-checklist-text">{prompt.text}</span>
           )}
 
-          <div className="dm-question-card-actions">
+          <div className="dm-checklist-actions">
             <button
               type="button"
-              className={`dm-btn dm-btn--sm${prompt.askedAt ? " dm-btn--active" : ""}`}
-              onClick={() =>
-                updatePrompt(prompt.id, {
-                  askedAt: prompt.askedAt ? null : new Date().toISOString(),
-                })
-              }
+              className="dm-text-btn"
+              onClick={() => void copyPrompt(prompt.text)}
               disabled={saving}
             >
-              {prompt.askedAt ? "Asked ✓" : "Mark asked"}
+              Copy
             </button>
             <button
               type="button"
-              className="dm-btn dm-btn--sm"
+              className="dm-text-btn"
               onClick={() => startEdit(prompt)}
               disabled={saving}
             >
@@ -89,36 +104,15 @@ export function ClinicalQuestionCards({
             </button>
             <button
               type="button"
-              className="dm-btn dm-btn--sm"
-              onClick={() => deletePrompt(prompt.id)}
+              className="dm-text-btn dm-text-btn--muted"
+              onClick={() => dismissPrompt(prompt.id)}
               disabled={saving}
             >
-              Delete
+              Dismiss
             </button>
           </div>
-
-          <label className="dm-field-label" htmlFor={`q-note-${prompt.id}`}>
-            Note / answer
-          </label>
-          <textarea
-            id={`q-note-${prompt.id}`}
-            className="assessment-notes"
-            style={{ minHeight: "2.5rem" }}
-            value={prompt.note ?? ""}
-            onChange={(e) => updatePrompt(prompt.id, { note: e.target.value || null })}
-            placeholder="Optional — capture client response or your observation"
-          />
-
-          <button
-            type="button"
-            className="dm-link-btn"
-            onClick={() => void onAddToEvidence(formatQuestionAsEvidenceNote(prompt))}
-            disabled={saving}
-          >
-            Add to evidence note
-          </button>
-        </article>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

@@ -1,6 +1,5 @@
-import { hasFormulationStarted } from "./clinical-formulation";
 import { getAllDomains } from "./registry";
-import type { ClinicalFormulationDraft, DomainSummary } from "./types";
+import type { DomainSummary } from "./types";
 
 export function getReviewableDomainNav(domains: DomainSummary[]): DomainSummary[] {
   return getAllDomains()
@@ -25,24 +24,19 @@ export function getAdjacentReviewableDomains(
 export function computeDomainProgress(domain: {
   hasConfirmedFindings: boolean;
   evidenceSummaryDraft: string | null;
-  clinicalFormulation: ClinicalFormulationDraft;
+  clinicalQuestionPrompts: { askedAt: string | null }[];
   summaryDraft: string | null;
-  reviewedAt: string | null;
-}): { label: string; steps: { done: boolean; label: string }[] } {
-  const steps = [
-    { done: domain.hasConfirmedFindings, label: "Evidence linked" },
-    { done: Boolean(domain.evidenceSummaryDraft?.trim()), label: "Synthesis drafted" },
-    { done: hasFormulationStarted(domain.clinicalFormulation), label: "Formulation started" },
-    { done: Boolean(domain.summaryDraft?.trim()), label: "Report drafted" },
-    { done: Boolean(domain.reviewedAt), label: "Domain reviewed" },
-  ];
-  const doneCount = steps.filter((s) => s.done).length;
-  const label = domain.reviewedAt
-    ? "Reviewed"
-    : doneCount === 0
-      ? "Not started"
-      : doneCount >= 3
-        ? "In progress"
-        : "Getting started";
-  return { label, steps };
+}): { steps: { done: boolean; label: string }[] } {
+  const questionsExplored =
+    domain.clinicalQuestionPrompts.length > 0 ||
+    domain.clinicalQuestionPrompts.some((q) => q.askedAt);
+
+  return {
+    steps: [
+      { done: domain.hasConfirmedFindings, label: "Evidence reviewed" },
+      { done: Boolean(domain.evidenceSummaryDraft?.trim()), label: "Synthesis drafted" },
+      { done: questionsExplored, label: "Questions explored" },
+      { done: Boolean(domain.summaryDraft?.trim()), label: "Report complete" },
+    ],
+  };
 }

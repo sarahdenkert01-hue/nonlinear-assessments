@@ -14,82 +14,87 @@ const CONFIDENCE_LEVELS: { value: Confidence | null; label: string }[] = [
   { value: "HIGH", label: "High" },
 ];
 
+function excerpt(text: string | null | undefined, max = 220): string | null {
+  const trimmed = text?.trim();
+  if (!trimmed) return null;
+  return trimmed.length > max ? `${trimmed.slice(0, max).trim()}…` : trimmed;
+}
+
 export function DomainStatusSidebar({
   episodeId,
   domain,
   allDomains,
-  stage,
   saving,
   onPatch,
-  onStageChange,
 }: {
   episodeId: string;
   domain: DomainDetail;
   allDomains: DomainSummary[];
-  stage: WorkspaceStage;
+  stage?: WorkspaceStage;
   saving: boolean;
   onPatch: (body: Record<string, unknown>) => void;
-  onStageChange: (stage: WorkspaceStage) => void;
+  onStageChange?: (stage: WorkspaceStage) => void;
 }) {
   const nav = getAdjacentReviewableDomains(allDomains, domain.domainId);
   const progress = computeDomainProgress(domain);
+  const synthesisPreview = excerpt(domain.evidenceSummaryDraft);
+  const reportPreview = excerpt(domain.summaryDraft);
 
   return (
     <aside className="dm-report-column">
-      <section className="dm-panel dm-section dm-sidebar-panel">
-        <div className="dm-sidebar-head">
-          <h2 className="dm-sidebar-domain">{domain.label}</h2>
-          <span className={`dm-badge${domain.reviewedAt ? " dm-badge--reviewed" : ""}`}>
-            {progress.label}
-          </span>
-        </div>
+      <section className="dm-panel dm-sidebar-panel">
+        <h2 className="dm-sidebar-domain">{domain.label}</h2>
 
-        <nav className="dm-stage-nav-mini" aria-label="Workflow stage">
-          {(
-            [
-              { id: "understand" as const, label: "Understand" },
-              { id: "formulate" as const, label: "Formulate" },
-              { id: "report" as const, label: "Report" },
-            ] as const
-          ).map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={`dm-stage-nav-mini-btn${stage === s.id ? " dm-stage-nav-mini-btn--active" : ""}`}
-              onClick={() => onStageChange(s.id)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </nav>
-
-        <ul className="dm-progress-steps">
+        <ul className="dm-progress-checklist" aria-label="Domain progress">
           {progress.steps.map((step) => (
             <li
               key={step.label}
-              className={`dm-progress-step${step.done ? " dm-progress-step--done" : ""}`}
+              className={`dm-progress-check-item${step.done ? " dm-progress-check-item--done" : ""}`}
             >
+              <span className="dm-progress-check-icon" aria-hidden="true">
+                {step.done ? "✓" : "○"}
+              </span>
               {step.label}
             </li>
           ))}
         </ul>
 
-        <label className="dm-field-label">Domain confidence</label>
-        <div className="dm-conf dm-conf--full" role="group" aria-label="Domain confidence">
-          {CONFIDENCE_LEVELS.map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              className={`dm-conf-btn${domain.confidence === opt.value ? " dm-conf-btn--active" : ""}`}
-              onClick={() => onPatch({ confidence: opt.value })}
-              disabled={saving}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="dm-sidebar-block">
+          <label className="dm-sidebar-label">Clinical confidence</label>
+          <div className="dm-conf dm-conf--full" role="group" aria-label="Clinical confidence">
+            {CONFIDENCE_LEVELS.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                className={`dm-conf-btn${domain.confidence === opt.value ? " dm-conf-btn--active" : ""}`}
+                onClick={() => onPatch({ confidence: opt.value })}
+                disabled={saving}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="dm-domain-nav">
+        <div className="dm-sidebar-block">
+          <p className="dm-sidebar-label">Clinical synthesis</p>
+          {synthesisPreview ? (
+            <p className="dm-synthesis-preview">{synthesisPreview}</p>
+          ) : (
+            <p className="dm-sidebar-empty">Not drafted yet</p>
+          )}
+        </div>
+
+        <div className="dm-sidebar-block">
+          <p className="dm-sidebar-label">Final clinician wording</p>
+          {reportPreview ? (
+            <p className="dm-synthesis-preview">{reportPreview}</p>
+          ) : (
+            <p className="dm-sidebar-empty">Not written yet</p>
+          )}
+        </div>
+
+        <nav className="dm-domain-nav" aria-label="Domain navigation">
           {nav.prev ? (
             <Link
               href={`/cases/${episodeId}/domains/${nav.prev.domainId}`}
@@ -113,32 +118,11 @@ export function DomainStatusSidebar({
           ) : (
             <span className="dm-domain-nav-spacer" />
           )}
-        </div>
+        </nav>
 
-        <div className="dm-actions">
-          {!domain.reviewedAt ? (
-            <button
-              type="button"
-              className="dm-btn dm-btn--primary"
-              onClick={() => onPatch({ reviewed: true })}
-              disabled={saving}
-            >
-              Mark domain reviewed
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="dm-btn"
-              onClick={() => onPatch({ reviewed: false })}
-              disabled={saving}
-            >
-              Unmark reviewed
-            </button>
-          )}
-          <Link href={`/cases/${episodeId}/domains`} className="dm-btn">
-            All domains
-          </Link>
-        </div>
+        <Link href={`/cases/${episodeId}/domains`} className="dm-sidebar-link">
+          All domains
+        </Link>
       </section>
     </aside>
   );

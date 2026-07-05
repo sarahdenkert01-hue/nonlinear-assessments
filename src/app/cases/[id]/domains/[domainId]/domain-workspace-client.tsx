@@ -10,6 +10,7 @@ import { createQuestionPrompt } from "@/lib/domains/clinical-questions";
 import "@/features/assessments/components/assessment.css";
 import "../domains.css";
 import { ClinicalQuestionCards } from "./clinical-question-cards";
+import { DifferentialPromptList } from "./differential-prompt-list";
 import { DomainStatusSidebar, type WorkspaceStage } from "./domain-status-sidebar";
 import { FormulationWorkspace } from "./formulation-workspace";
 import { ReportStage } from "./report-stage";
@@ -54,7 +55,7 @@ export function DomainWorkspaceClient({
 }) {
   const [domain, setDomain] = useState(initialDomain);
   const [altText, setAltText] = useState(initialDomain.alternativeExplanations.join("\n"));
-  const [differentialDraft, setDifferentialDraft] = useState("");
+  const [differentialPrompts, setDifferentialPrompts] = useState<string[]>([]);
   const [manualNote, setManualNote] = useState("");
   const [newQuestion, setNewQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +175,11 @@ export function DomainWorkspaceClient({
       );
       const data = await parseApiResponse<{ draft?: string; error?: string }>(res);
       if (!res.ok || !data.draft) throw new Error(data.error ?? "Generation failed");
-      setDifferentialDraft(data.draft);
+      const lines = data.draft
+        .split("\n")
+        .map((l) => l.replace(/^[\s•\-*□]+/, "").trim())
+        .filter(Boolean);
+      setDifferentialPrompts(lines);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -199,25 +204,29 @@ export function DomainWorkspaceClient({
     void patch({ summaryDraft: next });
   }, [domain.evidenceSummaryDraft, patch]);
 
-  const copyDifferentialDraftToList = useCallback(() => {
-    const lines = differentialDraft
-      .split("\n")
-      .map((l) => l.replace(/^[\s•\-*]+/, "").trim())
-      .filter(Boolean);
-    if (lines.length === 0) return;
-    const existing = new Set(
-      altText
+  const toggleAlternative = useCallback(
+    (prompt: string) => {
+      const trimmed = prompt.trim();
+      if (!trimmed) return;
+      const existing = altText
         .split("\n")
         .map((l) => l.trim())
-        .filter(Boolean),
-    );
-    const merged = [...existing];
-    for (const line of lines) {
-      if (!existing.has(line)) merged.push(line);
-    }
-    setAltText(merged.join("\n"));
-    void patch({ alternativeExplanations: merged });
-  }, [altText, differentialDraft, patch]);
+        .filter(Boolean);
+      const next = existing.includes(trimmed)
+        ? existing.filter((l) => l !== trimmed)
+        : [...existing, trimmed];
+      setAltText(next.join("\n"));
+      void patch({ alternativeExplanations: next });
+    },
+    [altText, patch],
+  );
+
+  const selectedAlternatives = new Set(
+    altText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean),
+  );
 
   const addManualNote = async (excerpt?: string) => {
     const text = (excerpt ?? manualNote).trim();
@@ -342,6 +351,25 @@ export function DomainWorkspaceClient({
               <Link href={`/cases/${episodeId}/domains`} className="dm-btn">
                 All domains
               </Link>
+              {!domain.reviewedAt ? (
+                <button
+                  type="button"
+                  className="dm-btn dm-btn--primary"
+                  onClick={() => void patch({ reviewed: true })}
+                  disabled={saving}
+                >
+                  Mark reviewed
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="dm-btn"
+                  onClick={() => void patch({ reviewed: false })}
+                  disabled={saving}
+                >
+                  Unmark reviewed
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -395,25 +423,21 @@ export function DomainWorkspaceClient({
                 evidenceBuckets={domain.evidenceBuckets}
               />
 
-              <section id="section-patterns" className="dm-panel dm-section">
-                <p className="dm-question-label">2. What pattern is emerging?</p>
+              <section id="section-patterns" className="dm-panel dm-section dm-panel--hero">
+                <p className="dm-section-step">Understanding</p>
                 <div className="dm-panel-head">
-                  <h2 className="dm-panel-title">Clinical synthesis</h2>
-                  <span className="dm-ai-badge">AI Draft — Review and edit before using.</span>
+                  <h2 className="dm-panel-title dm-panel-title--lg">Clinical synthesis</h2>
+                  <span className="dm-ai-badge">AI draft</span>
                 </div>
-                <p className="dm-panel-hint">
-                  AI-assisted synthesis of themes, functional impact, and strengths.
-                </p>
                 <textarea
                   id="clinical-synthesis"
-                  className="assessment-report-editor"
-                  style={{ minHeight: "8rem" }}
+                  className="assessment-report-editor dm-synthesis-editor"
                   value={domain.evidenceSummaryDraft ?? ""}
                   onChange={(e) => {
                     setDomain((d) => ({ ...d, evidenceSummaryDraft: e.target.value }));
                     debouncedPatch({ evidenceSummaryDraft: e.target.value || null });
                   }}
-                  placeholder="Generate or write clinical synthesis…"
+                  placeholder="Synthesize themes, functional impact, and strengths…"
                 />
                 <div className="dm-actions">
                   <button
@@ -427,179 +451,138 @@ export function DomainWorkspaceClient({
                 </div>
               </section>
 
-              <section id="section-opportunities" className="dm-panel dm-section">
-                <p className="dm-question-label">
-                  3. What information would strengthen this formulation?
-                </p>
+              <section id="section-opportunities" className="dm-panel dm-section dm-panel--compact">
+                <p className="dm-section-step">Information still needed</p>
                 <h2 className="dm-panel-title">Assessment opportunities</h2>
-                <p className="dm-panel-hint">
-                  Areas where additional information may strengthen confidence in this formulation.
-                </p>
                 {domain.assessmentOpportunityGroups.length > 0 ? (
-                  <div className="dm-opportunity-groups">
-                    {domain.assessmentOpportunityGroups.map((group) => (
-                      <div key={group.category} className="dm-opportunity-group">
-                        <h3 className="dm-opportunity-group-title">{group.label}</h3>
-                        <ul className="dm-opportunity-list">
-                          {group.items.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                  <div className="dm-hint-callouts">
+                    {domain.assessmentOpportunityGroups.map((group) =>
+                      group.items.map((item) => (
+                        <div key={`${group.category}-${item}`} className="dm-hint-callout">
+                          <p className="dm-hint-callout-label">{group.label}</p>
+                          <p className="dm-hint-callout-text">&ldquo;{item}&rdquo;</p>
+                        </div>
+                      )),
+                    )}
                   </div>
                 ) : (
-                  <p className="dm-panel-hint" style={{ marginBottom: "0.75rem" }}>
+                  <p className="dm-panel-hint dm-panel-hint--tight">
                     No additional opportunities identified at this time.
                   </p>
                 )}
-                <label className="dm-field-label" htmlFor="opportunity-notes">
-                  Clinician notes on opportunities
-                </label>
-                <textarea
-                  id="opportunity-notes"
-                  className="assessment-notes"
-                  style={{ marginTop: 0, minHeight: "3.5rem" }}
-                  value={domain.evidenceGapNotes ?? ""}
-                  onChange={(e) => {
-                    setDomain((d) => ({ ...d, evidenceGapNotes: e.target.value }));
-                    debouncedPatch({ evidenceGapNotes: e.target.value || null });
-                  }}
-                />
-                <div className="dm-add-note">
-                  <label className="dm-field-label" htmlFor="manual-note">
-                    Add evidence note
-                  </label>
+                <details className="dm-inline-details">
+                  <summary>Clinician notes on opportunities</summary>
+                  <textarea
+                    id="opportunity-notes"
+                    className="assessment-notes dm-inline-textarea"
+                    value={domain.evidenceGapNotes ?? ""}
+                    onChange={(e) => {
+                      setDomain((d) => ({ ...d, evidenceGapNotes: e.target.value }));
+                      debouncedPatch({ evidenceGapNotes: e.target.value || null });
+                    }}
+                  />
+                </details>
+                <details className="dm-inline-details">
+                  <summary>Add evidence note</summary>
                   <textarea
                     id="manual-note"
-                    className="assessment-notes"
-                    style={{ minHeight: "2.75rem" }}
+                    className="assessment-notes dm-inline-textarea"
                     value={manualNote}
                     onChange={(e) => setManualNote(e.target.value)}
                     placeholder="Context not captured in a module…"
                   />
-                  <div className="dm-actions">
+                  <div className="dm-actions dm-actions--tight">
                     <button
                       type="button"
                       className="dm-btn"
                       onClick={() => addManualNote()}
                       disabled={saving || !manualNote.trim()}
                     >
-                      Add note
+                      Save note
                     </button>
                   </div>
-                </div>
+                </details>
               </section>
 
-              <section id="section-questions" className="dm-panel dm-section">
-                <p className="dm-question-label">4. What should I ask next?</p>
+              <section id="section-questions" className="dm-panel dm-section dm-panel--compact">
+                <p className="dm-section-step">Questions</p>
                 <h2 className="dm-panel-title">Suggested clinical questions</h2>
-                <p className="dm-panel-hint">
-                  Interview prompts to deepen understanding — not diagnostic. Ignore any that are
-                  not useful.
-                </p>
+                <div className="dm-actions dm-actions--tight dm-actions--inline">
+                  <button
+                    type="button"
+                    className="dm-btn"
+                    onClick={() => generateQuestions(false)}
+                    disabled={generatingQuestions || saving}
+                  >
+                    {generatingQuestions ? "Generating…" : "Generate questions"}
+                  </button>
+                  <button
+                    type="button"
+                    className="dm-btn dm-btn--ghost"
+                    onClick={() => generateQuestions(true)}
+                    disabled={generatingQuestions || saving}
+                    title="Replace all questions including edited and marked-asked"
+                  >
+                    Replace all
+                  </button>
+                </div>
 
                 <ClinicalQuestionCards
                   prompts={domain.clinicalQuestionPrompts}
                   saving={saving}
                   onChange={patchQuestions}
-                  onAddToEvidence={addManualNote}
                 />
 
-                <div className="dm-add-question">
-                  <label className="dm-field-label" htmlFor="new-question">
-                    Add your own question
-                  </label>
+                <div className="dm-inline-add">
                   <textarea
                     id="new-question"
-                    className="assessment-notes"
-                    style={{ minHeight: "2.5rem" }}
+                    className="assessment-notes dm-inline-textarea"
                     value={newQuestion}
                     onChange={(e) => setNewQuestion(e.target.value)}
-                    placeholder="Write a custom interview prompt…"
+                    placeholder="Add your own question…"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        addManualQuestion();
+                      }
+                    }}
                   />
-                  <div className="dm-actions">
-                    <button
-                      type="button"
-                      className="dm-btn"
-                      onClick={addManualQuestion}
-                      disabled={saving || !newQuestion.trim()}
-                    >
-                      Add question
-                    </button>
-                    <button
-                      type="button"
-                      className="dm-btn dm-btn--primary"
-                      onClick={() => generateQuestions(false)}
-                      disabled={generatingQuestions || saving}
-                    >
-                      {generatingQuestions ? "Generating…" : "Generate suggested questions"}
-                    </button>
-                    <button
-                      type="button"
-                      className="dm-btn"
-                      onClick={() => generateQuestions(true)}
-                      disabled={generatingQuestions || saving}
-                      title="Replace all questions including edited and marked-asked"
-                    >
-                      Replace all
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="dm-text-btn"
+                    onClick={addManualQuestion}
+                    disabled={saving || !newQuestion.trim()}
+                  >
+                    Add to list
+                  </button>
                 </div>
               </section>
 
-              <section id="section-differentials" className="dm-panel dm-section">
-                <p className="dm-question-label">5. What else could explain this?</p>
+              <section id="section-differentials" className="dm-panel dm-section dm-panel--compact">
+                <p className="dm-section-step">Alternative explanations</p>
                 <h2 className="dm-panel-title">Other explanatory factors</h2>
-                <p className="dm-panel-hint">
-                  Alternative explanations as clinical reasoning prompts — not diagnoses.
+                <p className="dm-panel-hint dm-panel-hint--tight">
+                  Reasoning prompts — not diagnoses. Select suggestions or write your own.
                 </p>
+
+                <DifferentialPromptList
+                  prompts={differentialPrompts}
+                  selected={selectedAlternatives}
+                  saving={saving}
+                  onToggle={toggleAlternative}
+                  onDismissAll={() => setDifferentialPrompts([])}
+                />
+
                 <textarea
                   id="alt-exp"
-                  className="assessment-notes"
-                  style={{ minHeight: "4.5rem" }}
+                  className="assessment-notes dm-alt-notes"
                   value={altText}
                   onChange={(e) => setAltText(e.target.value)}
                   onBlur={commitAlternatives}
-                  placeholder={
-                    "Could trauma contribute to this pattern?\nCould sleep disruption amplify this presentation?"
-                  }
+                  placeholder="Your explanatory factors…"
                 />
 
-                {differentialDraft && (
-                  <div className="dm-ephemeral-panel">
-                    <div className="dm-panel-head">
-                      <span className="dm-ephemeral-label">Suggested prompts (not saved)</span>
-                      <span className="dm-ai-badge">AI Draft</span>
-                    </div>
-                    <textarea
-                      className="assessment-notes"
-                      style={{ minHeight: "4rem" }}
-                      value={differentialDraft}
-                      onChange={(e) => setDifferentialDraft(e.target.value)}
-                      aria-label="Ephemeral explanatory factor prompts"
-                    />
-                    <div className="dm-actions">
-                      <button
-                        type="button"
-                        className="dm-btn"
-                        onClick={copyDifferentialDraftToList}
-                        disabled={saving || !differentialDraft.trim()}
-                      >
-                        Copy to explanatory factors
-                      </button>
-                      <button
-                        type="button"
-                        className="dm-btn"
-                        onClick={() => setDifferentialDraft("")}
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="dm-actions">
+                <div className="dm-actions dm-actions--tight">
                   <button
                     type="button"
                     className="dm-btn"
@@ -645,10 +628,8 @@ export function DomainWorkspaceClient({
               episodeId={episodeId}
               domain={domain}
               allDomains={allDomains}
-              stage={stage}
               saving={saving}
               onPatch={(body) => void patch(body)}
-              onStageChange={setStage}
             />
           </div>
         </div>
