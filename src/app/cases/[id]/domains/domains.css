@@ -27,7 +27,8 @@
 .dm-domain-context {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
 }
 .dm-domain-title {
   margin: 0;
@@ -41,11 +42,19 @@
   font-size: 0.8125rem;
   color: var(--muted);
 }
-.dm-stage-purpose {
-  margin: -1rem 0 0;
+.dm-stage-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.dm-stage-guidance {
+  margin: 0.875rem 0 0;
   font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 400;
+  font-style: normal;
   color: var(--muted);
-  font-style: italic;
+  max-width: 40rem;
 }
 
 /* Workspace sections — whitespace over borders */
@@ -781,29 +790,34 @@
 }
 
 .dm-stage-tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  background: color-mix(in srgb, var(--foreground) 5%, var(--surface));
+  border-radius: 10px;
 }
 .dm-stage-tab {
   appearance: none;
   flex: 0 1 auto;
   border: none;
   border-radius: 8px;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.8125rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.25;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.dm-stage-tab:hover:not(.dm-stage-tab--active) {
+  color: var(--foreground);
 }
 .dm-stage-tab--active {
-  background: color-mix(in srgb, var(--foreground) 6%, var(--surface));
+  background: var(--surface);
   color: var(--foreground);
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 .dm-stage-nav-mini {
   display: flex;
@@ -1240,8 +1254,8 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: 0.75rem 0 1rem;
-  margin: -0.25rem 0 0;
+  padding: 1rem 0 1.75rem;
+  margin: 0;
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
@@ -1510,8 +1524,8 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: 0.75rem 0 1rem;
-  margin: -0.25rem 0 0;
+  padding: 1rem 0 1.75rem;
+  margin: 0;
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);

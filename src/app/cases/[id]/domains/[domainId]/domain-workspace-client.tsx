@@ -14,10 +14,22 @@ import { FormulateStage } from "./formulate-stage";
 import { ReportStage } from "./report-stage";
 import { UnderstandStage } from "./understand-stage";
 
-const STAGES: { id: WorkspaceStage; label: string; purpose: string }[] = [
-  { id: "understand", label: "Understand", purpose: "What do I know?" },
-  { id: "formulate", label: "Formulate", purpose: "What does this mean?" },
-  { id: "report", label: "Report", purpose: "How do I communicate this?" },
+const STAGES: { id: WorkspaceStage; label: string; guidance: string }[] = [
+  {
+    id: "understand",
+    label: "Understand",
+    guidance: "Review the available evidence before interpreting.",
+  },
+  {
+    id: "formulate",
+    label: "Formulate",
+    guidance: "Develop a coherent clinical understanding from the available evidence.",
+  },
+  {
+    id: "report",
+    label: "Report",
+    guidance: "Translate your clinical reasoning into report-ready language.",
+  },
 ];
 
 const SHORTCUTS = [
@@ -336,19 +348,21 @@ export function DomainWorkspaceClient({
               )}
             </div>
 
-            <nav className="dm-stage-tabs" aria-label="Workflow stages">
-              {STAGES.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
-                  onClick={() => setStage(s.id)}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </nav>
-            <p className="dm-stage-purpose">{activeStage.purpose}</p>
+            <div className="dm-stage-nav">
+              <nav className="dm-stage-tabs" aria-label="Workflow stages">
+                {STAGES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
+                    onClick={() => setStage(s.id)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </nav>
+              <p className="dm-stage-guidance">{activeStage.guidance}</p>
+            </div>
           </div>
 
           <div
