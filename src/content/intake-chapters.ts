@@ -8,71 +8,105 @@ export type ChapterContent = {
   progressMessage: string;
   intro: string;
   completionMessage: string;
+  bridgeFromPrevious?: string;
+  transitionToNext?: string;
 };
 
 export const CHAPTER_CONTENT: ChapterContent[] = [
   {
-    progressMessage: "You're exploring how you move through the world.",
+    progressMessage: "We're learning how you experience the world around you.",
     intro:
-      "This chapter looks at how you show up in different settings — and what it costs you to adapt. Take your time; there is no single right way to experience this.",
+      "This chapter looks at how you show up in different settings — and what it costs you to adapt. There is no single right way to move through the world.",
     completionMessage:
-      "Thank you for sharing. We're building a fuller picture of how you navigate the world.",
+      "What you shared about how you move through the world adds real texture to your picture.",
+    transitionToNext:
+      "Next, we'll explore how your mind handles focus, tasks, and mental energy.",
   },
   {
-    progressMessage: "You're exploring how you think and get things done.",
+    progressMessage: "Now we're exploring how your brain processes information.",
+    bridgeFromPrevious:
+      "You've shared how you move through the world. Now we'll look at focus, mental energy, and getting things done.",
     intro:
-      "This chapter is about focus, mental energy, and the ways you manage tasks and ideas. Answer based on what feels most true over the past several months.",
+      "This chapter is about the rhythms of your attention — starting tasks, sustaining focus, and the effort it takes to keep up.",
     completionMessage:
-      "Thank you for sharing. Every experience adds another piece to the puzzle.",
+      "How you think and get things done is rarely visible to others. What you named here matters.",
+    transitionToNext:
+      "From here, we'll turn toward your body and nervous system — sensation, environment, and how you respond.",
   },
   {
-    progressMessage: "You're exploring how your body and nervous system respond.",
+    progressMessage: "We're looking at how your nervous system experiences the world.",
+    bridgeFromPrevious:
+      "Building on what you've shared so far, we'll explore how your body responds to sensation and environment.",
     intro:
-      "This chapter is about physical sensations, your environment, and how your body experiences the world around you.",
+      "This chapter is about physical experience — comfort, overload, and the signals your body sends that others may not notice.",
     completionMessage:
-      "Thank you for sharing. Your body's signals are an important part of your story.",
+      "Your body's signals are an important part of your story, and you named them clearly.",
+    transitionToNext:
+      "Next, we'll explore how you experience and process emotions.",
   },
   {
-    progressMessage: "You're exploring how you experience and process emotions.",
+    progressMessage: "We're exploring how you experience and handle emotions.",
+    bridgeFromPrevious:
+      "You've covered a lot of ground. Now we'll look at feelings — how they arise, how you process them, and how they show up day to day.",
     intro:
-      "This chapter invites you to reflect on feelings — how they arise, how you handle them, and how they show up in daily life.",
+      "This chapter invites you to reflect on emotional life — intensity, expression, and the ways you make sense of what you feel.",
     completionMessage:
-      "Thank you for sharing. Emotional experiences are rarely simple, and yours matter.",
+      "Emotional experience is rarely simple. What you shared here adds depth, not judgment.",
+    transitionToNext:
+      "Up next: relationships, connection, and the social world — including the parts that feel easy and the parts that don't.",
   },
   {
-    progressMessage: "You're exploring your social experiences.",
+    progressMessage: "We're exploring your social experiences and relationships.",
+    bridgeFromPrevious:
+      "You're halfway through. What you've shared is already building a fuller picture — pause here if you need a moment.",
     intro:
-      "This chapter is about relationships, connection, and the social world — including the parts that feel easy and the parts that don't.",
+      "This chapter is about connection — friendship, belonging, and the social situations that energize or drain you.",
     completionMessage:
-      "Thank you for sharing. Social life looks different for everyone.",
+      "Social life looks different for everyone. What you described helps your clinician understand your context.",
+    transitionToNext:
+      "Next, we'll look at energy, burnout, and what recovery looks like for you.",
   },
   {
-    progressMessage: "You're exploring your energy and resilience.",
+    progressMessage: "We're exploring your energy, burnout, and resilience.",
+    bridgeFromPrevious:
+      "With more than half behind you, we'll now look at the patterns of your energy — what depletes you and what helps you come back.",
     intro:
-      "This chapter looks at burnout, recovery, and the rhythms of your energy — what drains you and what helps you come back.",
+      "This chapter looks at sustainability — how hard you push, how you recover, and what happens when your reserves run low.",
     completionMessage:
-      "Thank you for sharing. Understanding your energy patterns takes honesty.",
+      "Naming your energy patterns takes honesty. That clarity is valuable for your clinician.",
+    transitionToNext:
+      "From here, we'll explore identity — how you understand yourself and your place in the world.",
   },
   {
-    progressMessage: "You're exploring your sense of self.",
+    progressMessage: "We're exploring your sense of self and identity.",
+    bridgeFromPrevious:
+      "You're in the final stretch. A few more chapters, then space for your own words.",
     intro:
-      "This chapter is about identity — how you understand yourself and your place in the world. There are no right or wrong answers here.",
+      "This chapter is about self-understanding — who you are, how you see yourself, and the parts of your identity that feel settled or still forming.",
     completionMessage:
-      "Thank you for sharing. A sense of self is something many people spend years untangling.",
+      "A sense of self is something many people spend years untangling. What you shared is a meaningful piece of that.",
+    transitionToNext:
+      "Next, we'll step back to look at the broader patterns in your story so far.",
   },
   {
-    progressMessage: "You're exploring your story so far.",
+    progressMessage: "We're bringing your broader story into view.",
+    bridgeFromPrevious:
+      "Almost there. This chapter looks at the larger patterns and experiences that shape who you are today.",
     intro:
-      "This chapter steps back to look at broader life experiences — patterns, history, and context that shape who you are today.",
+      "This chapter steps back — life experiences, patterns you've noticed, and context that helps situate everything else.",
     completionMessage:
-      "Thank you for sharing. Your history is part of your picture, not all of it.",
+      "Your history is part of your picture, not all of it. What you named here gives your clinician important context.",
+    transitionToNext:
+      "Finally, open space for anything the earlier chapters didn't capture — in your own words.",
   },
   {
-    progressMessage: "You're sharing in your own words.",
+    progressMessage: "This is your space to bring everything together.",
+    bridgeFromPrevious:
+      "You've moved through eight chapters. This last one is entirely yours — whatever feels important to say.",
     intro:
-      "This final chapter is open space for anything the earlier topics didn't capture. Share what feels important — in as much or as little detail as you'd like.",
+      "There are no prompts to score here. Share what matters to you — difficulties, strengths, or anything you want your clinician to know.",
     completionMessage:
-      "Thank you for sharing. What you've written here gives your clinician valuable context.",
+      "What you wrote in your own words gives your clinician something no checklist could capture.",
   },
 ];
 
@@ -91,10 +125,23 @@ export function estimatedMinutesRemaining(
   );
 }
 
+export function getJourneyMilestone(
+  sectionIndex: number,
+  totalSections: number,
+): string | null {
+  if (sectionIndex === Math.floor(totalSections / 2)) {
+    return "You're halfway through — what you've shared is already shaping a real picture.";
+  }
+  if (sectionIndex === totalSections - 2) {
+    return "Nearly there. One more chapter after this, then your own words.";
+  }
+  return null;
+}
+
 export const CHAPTER_INTRO_CTA = "Begin this chapter";
 
 export const CHAPTER_CONTINUE_CTA = "Continue";
 
-export const CHAPTER_COMPLETE_CTA = "Continue to next chapter";
+export const CHAPTER_COMPLETE_CTA = "Continue";
 
-export const CHAPTER_PREVIOUS_CTA = "Previous";
+export const CHAPTER_PREVIOUS_CTA = "Back";

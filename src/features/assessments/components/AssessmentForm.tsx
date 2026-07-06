@@ -10,7 +10,7 @@ import {
   getChapterReflectionPrompt,
   REFLECTION_CONTINUE_CTA,
   REFLECTION_OPTIONAL_HINT,
-  REFLECTION_OPTIONAL_LABEL,
+  REFLECTION_PAUSE_LABEL,
   REFLECTION_SKIP_CTA,
 } from "@/content/intake-reflections";
 import {
@@ -20,6 +20,7 @@ import {
   CHAPTER_PREVIOUS_CTA,
   estimatedMinutesRemaining,
   getChapterContent,
+  getJourneyMilestone,
   INTAKE_MINUTES_PER_CHAPTER,
 } from "@/content/intake-chapters";
 import { AGREEMENT_OPTIONS, FREQUENCY_OPTIONS, NOT_SURE_OPTION } from "../data/questions";
@@ -488,17 +489,20 @@ export function AssessmentForm({
   })();
 
   const nextChapter = sections[sectionIndex + 1];
+  const journeyMilestone = useChapterFlow
+    ? getJourneyMilestone(sectionIndex, sections.length)
+    : null;
 
   return (
     <div className="assessment-root">
       <div className="assessment-shell">
-        <header className="assessment-header">
-          <h1 className="assessment-title">{title}</h1>
-          <p className="assessment-subtitle">{subtitle}</p>
-
-          {useChapterFlow ? (
+        {useChapterFlow ? (
+          <header className="assessment-header assessment-header--journey">
             <div className="assessment-progress assessment-progress--exploration" aria-live="polite">
               <p className="assessment-progress-message">{chapter.progressMessage}</p>
+              {journeyMilestone && sectionPhase === "intro" && (
+                <p className="assessment-progress-milestone">{journeyMilestone}</p>
+              )}
               <p className="assessment-progress-meta">
                 Chapter {sectionIndex + 1} of {sections.length} · About {minutesLeft} min left
                 {singleQuestionMode && questionsInSection > 1 &&
@@ -513,7 +517,11 @@ export function AssessmentForm({
                 />
               </div>
             </div>
-          ) : (
+          </header>
+        ) : (
+          <header className="assessment-header">
+            <h1 className="assessment-title">{title}</h1>
+            <p className="assessment-subtitle">{subtitle}</p>
             <div className="assessment-progress" aria-live="polite">
               Chapter {sectionIndex + 1} of {sections.length} · {answeredCount} of {totalQuestions}{" "}
               answered
@@ -524,8 +532,8 @@ export function AssessmentForm({
                 />
               </div>
             </div>
-          )}
-        </header>
+          </header>
+        )}
 
         <nav className="assessment-section-nav" aria-label="Chapters">
           {sections.map((sec, i) => {
@@ -557,6 +565,9 @@ export function AssessmentForm({
               <p className="assessment-chapter-kicker">
                 Chapter {sectionIndex + 1} of {sections.length}
               </p>
+              {sectionIndex > 0 && chapter.bridgeFromPrevious && (
+                <p className="assessment-chapter-bridge">{chapter.bridgeFromPrevious}</p>
+              )}
               <h2 className="assessment-chapter-title">{currentSection.title}</h2>
               <p className="assessment-chapter-intro-lead">{chapter.intro}</p>
               <p className="assessment-chapter-intro-desc">{currentSection.desc}</p>
@@ -566,7 +577,7 @@ export function AssessmentForm({
 
           {currentSection && useChapterFlow && sectionPhase === "reflection" && (
             <div className="assessment-chapter-reflection">
-              <p className="assessment-chapter-kicker">{REFLECTION_OPTIONAL_LABEL}</p>
+              <p className="assessment-chapter-kicker">{REFLECTION_PAUSE_LABEL}</p>
               <h2 className="assessment-chapter-reflection-prompt">
                 {getChapterReflectionPrompt(sectionIndex)}
               </h2>
@@ -591,9 +602,12 @@ export function AssessmentForm({
           {currentSection && useChapterFlow && sectionPhase === "complete" && (
             <div className="assessment-chapter-complete">
               <p className="assessment-chapter-complete-message">{chapter.completionMessage}</p>
-              {nextChapter && (
+              {chapter.transitionToNext && sectionIndex < sections.length - 1 && (
+                <p className="assessment-chapter-transition">{chapter.transitionToNext}</p>
+              )}
+              {nextChapter && sectionIndex < sections.length - 1 && (
                 <p className="assessment-chapter-complete-next">
-                  Next: <span>{nextChapter.title}</span>
+                  Up next: <span>{nextChapter.title}</span>
                 </p>
               )}
             </div>

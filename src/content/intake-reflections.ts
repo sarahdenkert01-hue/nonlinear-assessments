@@ -19,7 +19,9 @@ export function getChapterReflectionPrompt(chapterIndex: number): string {
 export const REFLECTION_OPTIONAL_LABEL = "Optional reflection";
 
 export const REFLECTION_OPTIONAL_HINT =
-  "Share only if something comes to mind — you can leave this blank.";
+  "Only if something comes to mind. There's no pressure to write anything here.";
+
+export const REFLECTION_PAUSE_LABEL = "A moment to pause";
 
 export const REFLECTION_SKIP_CTA = "Skip for now";
 

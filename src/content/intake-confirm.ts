@@ -3,13 +3,12 @@
 export const SUBMIT_CONFIRM_TITLE = "Ready to share with your clinician?";
 
 export const SUBMIT_CONFIRM_BODY =
-  "You can still go back and change anything. Once you share, your clinician will read your responses before your conversation.";
+  "You can still go back and change anything. Sharing sends your responses to your clinician — they'll read them before your conversation, not instead of it.";
 
 export const SUBMIT_CONFIRM_CTA = "Yes, share now";
 
-export const SUBMIT_CONFIRM_BACK = "Keep exploring";
+export const SUBMIT_CONFIRM_BACK = "Not yet — keep exploring";
 
-/** Single-question flow copy */
 export function questionInChapterLabel(current: number, total: number): string {
-  return `${current} of ${total} in this chapter`;
+  return `Question ${current} of ${total}`;
 }

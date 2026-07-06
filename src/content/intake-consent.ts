@@ -1,16 +1,16 @@
 export const INTAKE_WELCOME_EYEBROW = "Welcome";
 
-export const INTAKE_WELCOME_TITLE = "Let's explore your experience";
+export const INTAKE_WELCOME_TITLE = "A quiet space to reflect";
 
 export function intakeWelcomeLead(clientName?: string | null): string {
   if (clientName?.trim()) {
-    return `Hi ${clientName.trim()} — this is a quiet space to reflect before you meet with your clinician.`;
+    return `Hi ${clientName.trim()} — before you meet with your clinician, this is a place to pause and notice your own experience.`;
   }
-  return "This is a quiet space to reflect before you meet with your clinician.";
+  return "Before you meet with your clinician, this is a place to pause and notice your own experience.";
 }
 
 export const INTAKE_WELCOME_INTRO =
-  "You'll move through a series of short chapters about how you think, feel, and move through the world. Your clinician will use what you share — alongside conversation — to understand you more fully. This is one part of that picture, not a diagnosis on its own.";
+  "You'll move through nine short chapters — each one a different lens on how you think, feel, and move through the world. What you share here helps your clinician understand you more fully. It is one part of that picture, not a diagnosis on its own.";
 
 export const INTAKE_EXPECTATIONS = [
   {

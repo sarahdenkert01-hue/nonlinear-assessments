@@ -60,6 +60,34 @@
   color: #9ca3af;
 }
 
+.assessment-header--journey {
+  margin-bottom: 1.5rem;
+}
+
+.assessment-progress-milestone {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.assessment-chapter-bridge {
+  margin: 0 0 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.assessment-chapter-transition {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #374151;
+}
+
 .assessment-progress-bar {
   height: 3px;
   background: #e5e7eb;
@@ -460,6 +488,69 @@
 
 .intake-completion-header {
   margin-bottom: 2rem;
+}
+
+.intake-completion-section-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.intake-completion-arc {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.intake-completion-arc-intro {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.intake-completion-arc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.intake-completion-arc-list li::before {
+  content: "·";
+  margin-right: 0.5rem;
+  color: #9ca3af;
+}
+
+.intake-completion-reflections-note {
+  margin: 1rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.intake-completion-collaboration {
+  margin-bottom: 2rem;
+}
+
+.intake-completion-collaboration-body {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #374151;
+}
+
+.intake-completion-closing {
+  margin: 0 0 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #4b5563;
 }
 
 .intake-completion-steps {
