@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeThemeScores,
+  countAnsweredQuestions,
   isQuestionTriggered,
   resolveThemesWithOverrides,
 } from "./scoring";
@@ -51,6 +52,23 @@ describe("computeThemeScores", () => {
     const executive = scores.find((t) => t.id === "executive-dysfunction");
     expect(executive?.hits).toBe(2);
     expect(executive?.flagged).toBe(true);
+  });
+  it("does not flag themes when the client selects Not sure", () => {
+    const scores = computeThemeScores({ q01: "Not sure" });
+    const masking = scores.find((t) => t.id === "masking");
+    expect(masking?.flagged).toBe(false);
+    expect(masking?.hits).toBe(0);
+  });
+});
+
+describe("countAnsweredQuestions", () => {
+  it("excludes optional chapter reflection keys from the count", () => {
+    expect(
+      countAnsweredQuestions({
+        q01: "Often",
+        "reflection:0": "Something personal",
+      }),
+    ).toBe(1);
   });
 });
 

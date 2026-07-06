@@ -3,10 +3,18 @@
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
+  INTAKE_BEGIN_CTA,
+  INTAKE_BEGIN_CTA_LOADING,
   INTAKE_CONSENT_CHECKBOX_LABEL,
-  INTAKE_CONSENT_SECTIONS,
-  INTAKE_CONSENT_TITLE,
+  INTAKE_EXPECTATIONS,
+  INTAKE_LEGAL_DETAILS_SUMMARY,
+  INTAKE_LEGAL_SECTIONS,
+  INTAKE_WELCOME_EYEBROW,
+  INTAKE_WELCOME_INTRO,
+  INTAKE_WELCOME_TITLE,
+  intakeWelcomeLead,
 } from "@/content/intake-consent";
+import "@/features/assessments/components/assessment.css";
 import type { AssessmentSessionRecord } from "@/lib/episodes";
 
 export function IntakeConsent({
@@ -42,50 +50,59 @@ export function IntakeConsent({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[var(--accent-soft)] to-transparent" />
-      <main className="relative mx-auto max-w-lg px-6 py-12">
-        <BrandLogo size={44} showWordmark className="mb-6" href={null} />
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">
-          Before you begin
-        </p>
-        <h1 className="ui-page-title mt-2">{INTAKE_CONSENT_TITLE}</h1>
-        {session.clientName && (
-          <p className="ui-page-lead">Questionnaire for {session.clientName}</p>
-        )}
-        <div className="ui-card mt-8 space-y-6 p-6">
-          {INTAKE_CONSENT_SECTIONS.map((section) => (
-            <div key={section.heading}>
-              <h2 className="text-sm font-semibold text-slate-900">{section.heading}</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{section.body}</p>
+    <div className="assessment-root intake-welcome">
+      <div className="assessment-shell">
+        <BrandLogo size={44} showWordmark className="intake-welcome-logo" href={null} />
+
+        <header className="intake-welcome-header">
+          <p className="intake-welcome-eyebrow">{INTAKE_WELCOME_EYEBROW}</p>
+          <h1 className="assessment-title">{INTAKE_WELCOME_TITLE}</h1>
+          <p className="intake-welcome-lead">{intakeWelcomeLead(session.clientName)}</p>
+          <p className="intake-welcome-intro">{INTAKE_WELCOME_INTRO}</p>
+        </header>
+
+        <section className="intake-welcome-expectations" aria-label="What to expect">
+          {INTAKE_EXPECTATIONS.map((item) => (
+            <div key={item.title} className="intake-welcome-expectation">
+              <h2 className="intake-welcome-expectation-title">{item.title}</h2>
+              <p className="intake-welcome-expectation-body">{item.body}</p>
             </div>
           ))}
-        </div>
-        <label className="mt-8 flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--border)] bg-white p-4">
+        </section>
+
+        <details className="intake-welcome-legal">
+          <summary>{INTAKE_LEGAL_DETAILS_SUMMARY}</summary>
+          <div className="intake-welcome-legal-body">
+            {INTAKE_LEGAL_SECTIONS.map((section) => (
+              <div key={section.heading} className="intake-welcome-legal-section">
+                <h3 className="intake-welcome-legal-heading">{section.heading}</h3>
+                <p className="intake-welcome-legal-text">{section.body}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <label className="intake-welcome-consent">
           <input
             type="checkbox"
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+            className="intake-welcome-consent-input"
           />
-          <span className="text-sm leading-relaxed text-slate-700">
-            {INTAKE_CONSENT_CHECKBOX_LABEL}
-          </span>
+          <span className="intake-welcome-consent-label">{INTAKE_CONSENT_CHECKBOX_LABEL}</span>
         </label>
-        {error && (
-          <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+
+        {error && <p className="intake-welcome-error">{error}</p>}
+
         <button
           type="button"
           onClick={handleContinue}
           disabled={!checked || submitting}
-          className="ui-btn ui-btn-primary mt-6 w-full py-3"
+          className="assessment-btn assessment-btn--primary intake-welcome-cta"
         >
-          {submitting ? "Continuing…" : "Continue to questionnaire"}
+          {submitting ? INTAKE_BEGIN_CTA_LOADING : INTAKE_BEGIN_CTA}
         </button>
-      </main>
+      </div>
     </div>
   );
 }

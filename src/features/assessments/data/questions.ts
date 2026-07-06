@@ -16,6 +16,9 @@ export const AGREEMENT_OPTIONS = [
   "Strongly agree",
 ] as const;
 
+/** Valid for frequency and agreement scales — never triggers clinical flags. */
+export const NOT_SURE_OPTION = "Not sure" as const;
+
 export type FrequencyOption = (typeof FREQUENCY_OPTIONS)[number];
 export type AgreementOption = (typeof AGREEMENT_OPTIONS)[number];
 
@@ -441,8 +444,8 @@ export const QUESTIONS: QuestionItem[] = [
   },
 
   {
-    section: "History and background",
-    sectionDesc: "A few broader questions about your life experiences.",
+    section: "Your story so far",
+    sectionDesc: "A few broader questions about your life experiences and the patterns you've noticed along the way.",
   },
 
   {
@@ -484,7 +487,7 @@ export const QUESTIONS: QuestionItem[] = [
   {
     section: "In your own words",
     sectionDesc:
-      "These open questions give you space to share what the questionnaire may not have captured.",
+      "These open questions give you space to share what the earlier topics may not have captured.",
   },
 
   {

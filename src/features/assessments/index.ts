@@ -4,6 +4,7 @@ export {
   QUESTIONS,
   FREQUENCY_OPTIONS,
   AGREEMENT_OPTIONS,
+  NOT_SURE_OPTION,
 } from "./data/questions";
 export {
   buildSections,
@@ -15,6 +16,12 @@ export {
   countAnsweredQuestions,
   getScorableQuestions,
 } from "./lib/scoring";
+export {
+  reflectionKey,
+  isReflectionKey,
+  getChapterReflections,
+} from "./lib/reflections";
+export type { ChapterReflection } from "./lib/reflections";
 export {
   requestSessionReport,
   requestDevPreviewReport,

@@ -11,6 +11,7 @@ import {
   getTriggeredQuestionsForTheme,
   resolveThemesWithOverrides,
 } from "../lib/scoring";
+import { getChapterReflections } from "../lib/reflections";
 import type { AssessmentReportResult } from "../types";
 import type {
   AssessmentAnswers,
@@ -159,6 +160,7 @@ export function AssessmentReview({
   const included = useMemo(() => getIncludedThemes(resolved), [resolved]);
 
   const answeredCount = countAnsweredQuestions(answers);
+  const chapterReflections = useMemo(() => getChapterReflections(answers), [answers]);
   const totalScorable = getScorableQuestions().length;
   const suggestedCount = scores.filter((t) => t.flagged).length;
 
@@ -224,6 +226,25 @@ export function AssessmentReview({
             <strong>{included.length}</strong> themes included for report
           </span>
         </div>
+
+        {chapterReflections.length > 0 && (
+          <section className="assessment-reflections-panel" aria-labelledby="reflections-heading">
+            <h2 id="reflections-heading" className="assessment-section-heading">
+              Optional chapter reflections
+            </h2>
+            <p className="assessment-subtitle" style={{ marginBottom: "1rem" }}>
+              Free-text reflections the client chose to share after each chapter.
+            </p>
+            <ul className="assessment-reflections-list">
+              {chapterReflections.map((entry) => (
+                <li key={entry.chapterIndex} className="assessment-reflections-item">
+                  <p className="assessment-reflections-chapter">{entry.chapterTitle}</p>
+                  <p className="assessment-reflections-text">{entry.text}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section aria-labelledby="themes-heading">
           <h2

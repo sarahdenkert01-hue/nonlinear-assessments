@@ -11,6 +11,7 @@ import {
   type ThemeScore,
   type ThemeWeights,
 } from "../types";
+import { isReflectionKey } from "./reflections";
 
 export function getScorableQuestions(): AssessmentQuestion[] {
   return QUESTIONS.filter(isAssessmentQuestion).filter((q) => q.format !== "open");
@@ -154,6 +155,7 @@ export function getTriggeredQuestionsForTheme(
 
 export function countAnsweredQuestions(answers: AssessmentAnswers): number {
   return Object.keys(answers).filter((id) => {
+    if (isReflectionKey(id)) return false;
     const value = answers[id];
     return value !== undefined && value.trim() !== "";
   }).length;

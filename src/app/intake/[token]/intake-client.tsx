@@ -5,6 +5,14 @@ import { AssessmentForm, type AssessmentAnswers } from "@/features/assessments";
 import { hasConsent } from "@/lib/intake-access";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import type { AssessmentSessionRecord } from "@/lib/episodes";
+import {
+  INTAKE_FORM_SUBTITLE,
+  INTAKE_FORM_TITLE,
+  INTAKE_STICKY_HINT,
+  INTAKE_SUBMIT_LABEL,
+  INTAKE_SUBMIT_LABEL_LOADING,
+} from "@/content/intake-experience";
+import { IntakeCompletion } from "./intake-completion";
 import { IntakeConsent } from "./intake-consent";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -91,37 +99,14 @@ function IntakeQuestionnaire({
   };
 
   if (isSubmitted) {
-    return (
-      <div className="assessment-root">
-        <div className="assessment-shell">
-          <header className="assessment-header">
-            <h1 className="assessment-title">Thank you</h1>
-            <p className="assessment-subtitle">
-              Your responses have been submitted. Your clinician will review them
-              before your assessment.
-            </p>
-            {session.submittedAt && (
-              <p className="assessment-theme-meta" style={{ marginTop: "1rem" }}>
-                Submitted {new Date(session.submittedAt).toLocaleString()}
-              </p>
-            )}
-          </header>
-          <AssessmentForm
-            initialAnswers={session.answers}
-            readOnly
-            title="Your submitted responses"
-            subtitle="This form is now read-only."
-          />
-        </div>
-      </div>
-    );
+    return <IntakeCompletion session={session} />;
   }
 
   return (
     <div>
-      <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-white/95 px-6 py-3 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-2xl items-center justify-between text-xs text-slate-500">
-          <span>Progress saves automatically</span>
+      <div className="intake-sticky-bar">
+        <div className="intake-sticky-bar-inner">
+          <span>{INTAKE_STICKY_HINT}</span>
           <SaveIndicator status={saveStatus} />
         </div>
       </div>
@@ -129,8 +114,9 @@ function IntakeQuestionnaire({
         initialAnswers={session.answers}
         onAnswersChange={handleAnswersChange}
         onComplete={handleSubmit}
-        submitLabel={submitting ? "Submitting…" : "Submit questionnaire"}
-        subtitle="You can leave and return using this same link."
+        title={INTAKE_FORM_TITLE}
+        subtitle={INTAKE_FORM_SUBTITLE}
+        submitLabel={submitting ? INTAKE_SUBMIT_LABEL_LOADING : INTAKE_SUBMIT_LABEL}
       />
       {submitError && (
         <p className="mx-auto max-w-2xl px-6 pb-8 text-sm text-red-600">{submitError}</p>
