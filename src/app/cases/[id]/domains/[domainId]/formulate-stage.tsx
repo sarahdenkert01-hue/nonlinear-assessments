@@ -110,36 +110,33 @@ export function FormulateStage({
 
   return (
     <div className="dm-formulate-layout">
-      <div className="dm-formulation-flow">
-        {FLOW_FIELDS.map((field, index) => (
-          <div key={field.key} className="dm-flow-step">
-            {index > 0 && <div className="dm-flow-connector" aria-hidden="true" />}
-            <section className="dm-flow-section">
-              <h2 className="dm-flow-title">{field.title}</h2>
-              <p className="dm-flow-hint">{field.hint}</p>
-              <textarea
-                className="assessment-notes dm-flow-textarea"
-                value={formulation[field.key] ?? ""}
-                onChange={(e) => updateField(field.key, e.target.value)}
-                disabled={saving}
-              />
-              {field.seed && (
-                <button
-                  type="button"
-                  className="dm-btn dm-btn--secondary"
-                  onClick={() => runSeed(field.seed!)}
-                  disabled={
-                    saving ||
-                    (field.seed === "synthesis" && !domain.evidenceSummaryDraft?.trim()) ||
-                    (field.seed === "opportunities" &&
-                      domain.assessmentOpportunityGroups.length === 0)
-                  }
-                >
-                  {field.seed === "synthesis" ? "Seed from synthesis" : "Pull from opportunities"}
-                </button>
-              )}
-            </section>
-          </div>
+      <div className="dm-formulation-writing">
+        {FLOW_FIELDS.map((field) => (
+          <section key={field.key} className="dm-writing-field">
+            <h2 className="dm-writing-field-title">{field.title}</h2>
+            <p className="dm-writing-field-hint">{field.hint}</p>
+            <textarea
+              className="assessment-notes dm-writing-textarea"
+              value={formulation[field.key] ?? ""}
+              onChange={(e) => updateField(field.key, e.target.value)}
+              disabled={saving}
+            />
+            {field.seed && (
+              <button
+                type="button"
+                className="dm-text-btn dm-text-btn--muted"
+                onClick={() => runSeed(field.seed!)}
+                disabled={
+                  saving ||
+                  (field.seed === "synthesis" && !domain.evidenceSummaryDraft?.trim()) ||
+                  (field.seed === "opportunities" &&
+                    domain.assessmentOpportunityGroups.length === 0)
+                }
+              >
+                {field.seed === "synthesis" ? "Seed from synthesis" : "Pull from opportunities"}
+              </button>
+            )}
+          </section>
         ))}
       </div>
 

@@ -62,7 +62,7 @@ export function FormulationReferencePanel({
         />
         <button
           type="button"
-          className="dm-btn dm-btn--secondary dm-btn--block"
+          className="dm-text-btn dm-text-btn--muted"
           onClick={onGenerateSynthesis}
           disabled={generatingSynthesis || saving}
         >
@@ -71,7 +71,7 @@ export function FormulationReferencePanel({
       </section>
 
       <section className="dm-reference-block">
-        <h3 className="dm-reference-heading">Current evidence</h3>
+        <h3 className="dm-reference-heading">Confirmed evidence</h3>
         {domain.findings.length === 0 ? (
           <p className="dm-reference-text">No confirmed findings linked.</p>
         ) : (
@@ -88,9 +88,11 @@ export function FormulationReferencePanel({
         )}
       </section>
 
-      {domain.assessmentOpportunityGroups.length > 0 && (
-        <section className="dm-reference-block">
-          <h3 className="dm-reference-heading">Opportunities</h3>
+      <section className="dm-reference-block">
+        <h3 className="dm-reference-heading">Opportunities</h3>
+        {domain.assessmentOpportunityGroups.length === 0 ? (
+          <p className="dm-reference-text">None flagged.</p>
+        ) : (
           <ul className="dm-reference-list dm-reference-list--plain">
             {domain.assessmentOpportunityGroups.flatMap((g) =>
               g.items.map((item) => (
@@ -101,16 +103,16 @@ export function FormulationReferencePanel({
               )),
             )}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
 
-      <details className="dm-reference-details">
-        <summary>Interview prompts</summary>
-        <div className="dm-reference-details-body">
-          <div className="dm-actions dm-actions--tight">
+      <section className="dm-reference-block">
+        <div className="dm-reference-block-head">
+          <h3 className="dm-reference-heading">Interview prompts</h3>
+          <div className="dm-reference-actions">
             <button
               type="button"
-              className="dm-btn dm-btn--secondary"
+              className="dm-text-btn dm-text-btn--muted"
               onClick={() => onGenerateQuestions(false)}
               disabled={generatingQuestions || saving}
             >
@@ -125,55 +127,53 @@ export function FormulationReferencePanel({
               Replace all
             </button>
           </div>
-          <ClinicalQuestionCards
-            prompts={domain.clinicalQuestionPrompts}
-            saving={saving}
-            onChange={onQuestionsChange}
-          />
-          <textarea
-            className="assessment-notes dm-compact-textarea"
-            value={newQuestion}
-            onChange={(e) => onNewQuestionChange(e.target.value)}
-            placeholder="Add prompt…"
-          />
-          <button
-            type="button"
-            className="dm-text-btn"
-            onClick={onAddQuestion}
-            disabled={saving || !newQuestion.trim()}
-          >
-            Add prompt
-          </button>
         </div>
-      </details>
+        <ClinicalQuestionCards
+          prompts={domain.clinicalQuestionPrompts}
+          saving={saving}
+          onChange={onQuestionsChange}
+        />
+        <textarea
+          className="assessment-notes dm-reference-input"
+          value={newQuestion}
+          onChange={(e) => onNewQuestionChange(e.target.value)}
+          placeholder="Add prompt…"
+        />
+        <button
+          type="button"
+          className="dm-text-btn dm-text-btn--muted"
+          onClick={onAddQuestion}
+          disabled={saving || !newQuestion.trim()}
+        >
+          Add prompt
+        </button>
+      </section>
 
-      <details className="dm-reference-details">
-        <summary>Alternative explanations</summary>
-        <div className="dm-reference-details-body">
-          <DifferentialPromptList
-            prompts={differentialPrompts}
-            selected={selectedAlternatives}
-            saving={saving}
-            onToggle={onToggleAlternative}
-            onDismissAll={onDismissDifferentialPrompts}
-          />
-          <textarea
-            className="assessment-notes dm-compact-textarea"
-            value={altText}
-            onChange={(e) => onAltTextChange(e.target.value)}
-            onBlur={onCommitAlternatives}
-            placeholder="Factors under consideration…"
-          />
-          <button
-            type="button"
-            className="dm-btn dm-btn--secondary"
-            onClick={onGenerateDifferentials}
-            disabled={generatingDifferentials || saving}
-          >
-            {generatingDifferentials ? "Generating…" : "Generate prompts"}
-          </button>
-        </div>
-      </details>
+      <section className="dm-reference-block">
+        <h3 className="dm-reference-heading">Alternative explanations</h3>
+        <DifferentialPromptList
+          prompts={differentialPrompts}
+          selected={selectedAlternatives}
+          saving={saving}
+          onToggle={onToggleAlternative}
+          onDismissAll={onDismissDifferentialPrompts}
+        />
+        <textarea
+          className="assessment-notes dm-reference-input"
+          value={altText}
+          onChange={(e) => onAltTextChange(e.target.value)}
+          onBlur={onCommitAlternatives}
+          placeholder="Factors under consideration…"
+        />
+        <button
+          type="button"
+          className="dm-text-btn dm-text-btn--muted"
+          onClick={onGenerateDifferentials}
+          disabled={generatingDifferentials || saving}
+        >
+          {generatingDifferentials ? "Generating…" : "Generate prompts"}
+        </button>
+      </section>
     </aside>
   );
 }
