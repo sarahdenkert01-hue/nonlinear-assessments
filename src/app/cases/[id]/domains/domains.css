@@ -845,14 +845,13 @@
 }
 @media (min-width: 960px) {
   .dm-formulate-layout {
-    grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
-    gap: 3rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.5rem;
   }
 }
 .dm-formulation-writing {
   min-width: 0;
   width: 100%;
-  max-width: 900px;
 }
 .dm-writing-field + .dm-writing-field {
   margin-top: 2.75rem;
@@ -905,7 +904,6 @@
   top: 6rem;
   align-self: start;
   width: 100%;
-  max-width: 360px;
   padding: 1rem 1.1rem;
   border-radius: 10px;
   background: color-mix(in srgb, var(--foreground) 2.5%, var(--surface));
@@ -1399,6 +1397,9 @@
 }
 .dm-stage-root--formulate {
   --dm-stage-bg: var(--surface);
+}
+.dm-stage-root--formulate .assessment-shell {
+  max-width: 90rem;
 }
 .dm-stage-root--report {
   --dm-stage-bg: var(--surface);
