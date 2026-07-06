@@ -178,14 +178,14 @@
 }
 
 .assessment-chapter-intro-lead {
-  margin: 0 0 1rem;
+  margin: 0 0 1.25rem;
   font-size: 1rem;
   line-height: 1.65;
   color: #374151;
 }
 
 .assessment-chapter-intro-desc {
-  margin: 0 0 1.25rem;
+  margin: 0 0 1.5rem;
   font-size: 0.9375rem;
   line-height: 1.6;
   color: #6b7280;
@@ -230,6 +230,14 @@
   margin: 0 0 2rem;
   color: #6b7280;
   font-size: 0.9375rem;
+}
+
+.assessment-micro-validation {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .assessment-question {
@@ -298,7 +306,7 @@
 }
 
 .assessment-question-header {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
 }
 
 .assessment-question-progress {
@@ -421,11 +429,11 @@
 }
 
 .assessment-chapter-reflection {
-  padding: 0.5rem 0 0;
+  padding: 0.75rem 0 0;
 }
 
 .assessment-chapter-reflection-prompt {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.5rem;
   font-size: 1.0625rem;
   font-weight: 500;
   line-height: 1.55;
@@ -433,7 +441,7 @@
 }
 
 .assessment-chapter-reflection-hint {
-  margin: 0 0 1rem;
+  margin: 0 0 1.25rem;
   font-size: 0.875rem;
   line-height: 1.5;
   color: #9ca3af;

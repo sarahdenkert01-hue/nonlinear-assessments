@@ -3,7 +3,7 @@
 export const INTAKE_FORM_TITLE = "Your exploration";
 
 export const INTAKE_FORM_SUBTITLE =
-  "Nine short chapters, at your own pace. Answer based on how you've felt over the past several months — honesty matters more than certainty.";
+  "Nine short chapters, at your own pace. Answer based on how you've felt over the past several months.";
 
 export const INTAKE_STICKY_HINT = "Saved automatically — pause and return whenever you need";
 
@@ -11,18 +11,17 @@ export const INTAKE_SUBMIT_LABEL = "Share with your clinician";
 
 export const INTAKE_SUBMIT_LABEL_LOADING = "Sharing…";
 
-export const INTAKE_COMPLETION_TITLE = "You shared something worth reading";
+export const INTAKE_COMPLETION_TITLE = "Thank you for taking the time";
 
 export const INTAKE_COMPLETION_SUBTITLE =
-  "What you wrote will help your clinician understand you — not as a checklist, but as a person. This is one step in a longer conversation.";
+  "Your clinician will read what you've shared before you meet. These responses help start the conversation — they don't define you.";
 
 export const INTAKE_COMPLETION_HOPE =
-  "Many people notice something shift simply by pausing to name their experience — even before they sit down with their clinician.";
+  "You can return to this link anytime to revisit or update what you wrote before your appointment.";
 
 export const INTAKE_COMPLETION_NEXT_STEPS = [
-  "Your clinician will read your responses before your conversation.",
-  "Together, you'll explore what resonates, what surprises you, and what still feels unclear.",
-  "You can return to this link anytime to revisit what you wrote.",
+  "Your clinician will review your responses ahead of your conversation.",
+  "Together, you'll explore what resonates and what still feels unclear.",
 ] as const;
 
 export const INTAKE_COMPLETION_REVIEW_CTA = "Revisit what you shared";

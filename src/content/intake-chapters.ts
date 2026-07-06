@@ -6,107 +6,93 @@ export const INTAKE_MINUTES_PER_CHAPTER = 3;
 
 export type ChapterContent = {
   progressMessage: string;
+  /** Why these questions matter — one short paragraph. */
   intro: string;
-  completionMessage: string;
+  /** What the client will be asked — one practical sentence. */
+  whatToExpect: string;
+  /** Brief handoff from the previous chapter (shown on intro, not a separate screen). */
   bridgeFromPrevious?: string;
-  transitionToNext?: string;
 };
 
 export const CHAPTER_CONTENT: ChapterContent[] = [
   {
-    progressMessage: "We're learning how you experience the world around you.",
+    progressMessage: "Understanding how you move through the world.",
     intro:
-      "This chapter looks at how you show up in different settings — and what it costs you to adapt. There is no single right way to move through the world.",
-    completionMessage:
-      "What you shared about how you move through the world adds real texture to your picture.",
-    transitionToNext:
-      "Next, we'll explore how your mind handles focus, tasks, and mental energy.",
+      "How you adapt in different settings shapes your daily life. These questions help your clinician see that context — not judge it.",
+    whatToExpect:
+      "You'll be asked how you present yourself in different situations and what it costs you to adapt.",
   },
   {
-    progressMessage: "Now we're exploring how your brain processes information.",
+    progressMessage: "Exploring attention and mental energy.",
     bridgeFromPrevious:
-      "You've shared how you move through the world. Now we'll look at focus, mental energy, and getting things done.",
+      "You've shared how you move through the world. Next we'll explore attention and mental energy.",
     intro:
-      "This chapter is about the rhythms of your attention — starting tasks, sustaining focus, and the effort it takes to keep up.",
-    completionMessage:
-      "How you think and get things done is rarely visible to others. What you named here matters.",
-    transitionToNext:
-      "From here, we'll turn toward your body and nervous system — sensation, environment, and how you respond.",
+      "Focus and getting things done look different for everyone. This chapter maps your patterns over the past several months.",
+    whatToExpect:
+      "You'll answer questions about starting tasks, sustaining focus, and mental effort.",
   },
   {
-    progressMessage: "We're looking at how your nervous system experiences the world.",
+    progressMessage: "Looking at your body and nervous system.",
     bridgeFromPrevious:
-      "Building on what you've shared so far, we'll explore how your body responds to sensation and environment.",
+      "You've covered focus and mental energy. Next we'll look at how your body responds to sensation and environment.",
     intro:
-      "This chapter is about physical experience — comfort, overload, and the signals your body sends that others may not notice.",
-    completionMessage:
-      "Your body's signals are an important part of your story, and you named them clearly.",
-    transitionToNext:
-      "Next, we'll explore how you experience and process emotions.",
+      "Physical comfort and overload are part of how you experience the world. Your clinician needs this picture too.",
+    whatToExpect:
+      "You'll be asked about physical sensations, your environment, and how your body responds.",
   },
   {
-    progressMessage: "We're exploring how you experience and handle emotions.",
+    progressMessage: "Exploring emotions and how you handle them.",
     bridgeFromPrevious:
-      "You've covered a lot of ground. Now we'll look at feelings — how they arise, how you process them, and how they show up day to day.",
+      "You've shared how your body experiences the world. Next we'll turn to emotions.",
     intro:
-      "This chapter invites you to reflect on emotional life — intensity, expression, and the ways you make sense of what you feel.",
-    completionMessage:
-      "Emotional experience is rarely simple. What you shared here adds depth, not judgment.",
-    transitionToNext:
-      "Up next: relationships, connection, and the social world — including the parts that feel easy and the parts that don't.",
+      "Emotional life is rarely simple. These questions help your clinician understand how feelings show up for you day to day.",
+    whatToExpect:
+      "You'll reflect on how you experience, process, and express emotions.",
   },
   {
-    progressMessage: "We're exploring your social experiences and relationships.",
+    progressMessage: "Exploring social experiences and relationships.",
     bridgeFromPrevious:
-      "You're halfway through. What you've shared is already building a fuller picture — pause here if you need a moment.",
+      "You're halfway through — what you've shared is already building a picture. Next: relationships and social life.",
     intro:
-      "This chapter is about connection — friendship, belonging, and the social situations that energize or drain you.",
-    completionMessage:
-      "Social life looks different for everyone. What you described helps your clinician understand your context.",
-    transitionToNext:
-      "Next, we'll look at energy, burnout, and what recovery looks like for you.",
+      "Connection and belonging matter. This chapter looks at the social situations that energize or drain you.",
+    whatToExpect:
+      "You'll answer questions about relationships and how you experience social situations.",
   },
   {
-    progressMessage: "We're exploring your energy, burnout, and resilience.",
+    progressMessage: "Exploring energy, burnout, and recovery.",
     bridgeFromPrevious:
-      "With more than half behind you, we'll now look at the patterns of your energy — what depletes you and what helps you come back.",
+      "You've described your social world. Next we'll look at energy — what depletes you and what helps you recover.",
     intro:
-      "This chapter looks at sustainability — how hard you push, how you recover, and what happens when your reserves run low.",
-    completionMessage:
-      "Naming your energy patterns takes honesty. That clarity is valuable for your clinician.",
-    transitionToNext:
-      "From here, we'll explore identity — how you understand yourself and your place in the world.",
+      "Sustainability matters. These questions map how hard you push, how you recover, and what happens when reserves run low.",
+    whatToExpect:
+      "You'll be asked about your overall energy, resilience, and recovery.",
   },
   {
-    progressMessage: "We're exploring your sense of self and identity.",
+    progressMessage: "Exploring identity and sense of self.",
     bridgeFromPrevious:
-      "You're in the final stretch. A few more chapters, then space for your own words.",
+      "You've named your energy patterns. Next we'll look at how you understand yourself.",
     intro:
-      "This chapter is about self-understanding — who you are, how you see yourself, and the parts of your identity that feel settled or still forming.",
-    completionMessage:
-      "A sense of self is something many people spend years untangling. What you shared is a meaningful piece of that.",
-    transitionToNext:
-      "Next, we'll step back to look at the broader patterns in your story so far.",
+      "Self-understanding takes time. This chapter invites you to reflect on who you are and how you see your place in the world.",
+    whatToExpect:
+      "You'll answer questions about identity — there are no right or wrong answers here.",
   },
   {
-    progressMessage: "We're bringing your broader story into view.",
+    progressMessage: "Bringing your broader story into view.",
     bridgeFromPrevious:
-      "Almost there. This chapter looks at the larger patterns and experiences that shape who you are today.",
+      "Almost there. Next we'll step back to the larger patterns in your story.",
     intro:
-      "This chapter steps back — life experiences, patterns you've noticed, and context that helps situate everything else.",
-    completionMessage:
-      "Your history is part of your picture, not all of it. What you named here gives your clinician important context.",
-    transitionToNext:
-      "Finally, open space for anything the earlier chapters didn't capture — in your own words.",
+      "Life experiences and patterns you've noticed help situate everything else. This chapter looks at the bigger picture.",
+    whatToExpect:
+      "A few broader questions about your experiences and the patterns you've noticed along the way.",
   },
   {
-    progressMessage: "This is your space to bring everything together.",
+    progressMessage: "Your space to share in your own words.",
     bridgeFromPrevious:
-      "You've moved through eight chapters. This last one is entirely yours — whatever feels important to say.",
+      "You've moved through eight chapters. This last one is open — whatever feels important to say.",
     intro:
-      "There are no prompts to score here. Share what matters to you — difficulties, strengths, or anything you want your clinician to know.",
-    completionMessage:
-      "What you wrote in your own words gives your clinician something no checklist could capture.",
+      "Some things don't fit a checklist. This chapter gives you room to share what matters most to you.",
+    whatToExpect:
+      "Open questions — share difficulties, strengths, or anything you want your clinician to know.",
   },
 ];
 
@@ -125,23 +111,8 @@ export function estimatedMinutesRemaining(
   );
 }
 
-export function getJourneyMilestone(
-  sectionIndex: number,
-  totalSections: number,
-): string | null {
-  if (sectionIndex === Math.floor(totalSections / 2)) {
-    return "You're halfway through — what you've shared is already shaping a real picture.";
-  }
-  if (sectionIndex === totalSections - 2) {
-    return "Nearly there. One more chapter after this, then your own words.";
-  }
-  return null;
-}
-
 export const CHAPTER_INTRO_CTA = "Begin this chapter";
 
 export const CHAPTER_CONTINUE_CTA = "Continue";
-
-export const CHAPTER_COMPLETE_CTA = "Continue";
 
 export const CHAPTER_PREVIOUS_CTA = "Back";

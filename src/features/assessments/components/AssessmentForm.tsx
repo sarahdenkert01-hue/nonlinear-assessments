@@ -9,20 +9,19 @@ import {
 import {
   getChapterReflectionPrompt,
   REFLECTION_CONTINUE_CTA,
+  REFLECTION_KICKER,
   REFLECTION_OPTIONAL_HINT,
-  REFLECTION_PAUSE_LABEL,
   REFLECTION_SKIP_CTA,
 } from "@/content/intake-reflections";
 import {
-  CHAPTER_COMPLETE_CTA,
   CHAPTER_CONTINUE_CTA,
   CHAPTER_INTRO_CTA,
   CHAPTER_PREVIOUS_CTA,
   estimatedMinutesRemaining,
   getChapterContent,
-  getJourneyMilestone,
   INTAKE_MINUTES_PER_CHAPTER,
 } from "@/content/intake-chapters";
+import { getMicroValidation } from "@/content/intake-validations";
 import { AGREEMENT_OPTIONS, FREQUENCY_OPTIONS, NOT_SURE_OPTION } from "../data/questions";
 import { reflectionKey } from "../lib/reflections";
 import { buildSections, countAnsweredQuestions } from "../lib/scoring";
@@ -46,7 +45,7 @@ export interface AssessmentFormProps {
   explorationFlow?: boolean;
 }
 
-type SectionPhase = "intro" | "questions" | "reflection" | "complete" | "confirm";
+type SectionPhase = "intro" | "questions" | "reflection" | "confirm";
 
 function NotSureButton({
   value,
@@ -296,24 +295,27 @@ export function AssessmentForm({
       : undefined;
 
   const completedChapters =
-    sectionPhase === "complete" || sectionPhase === "confirm" ? sectionIndex + 1 : sectionIndex;
+    sectionPhase === "confirm" ? sectionIndex + 1 : sectionIndex;
 
   const chapterProgress = useChapterFlow
     ? Math.round(
         ((sectionIndex +
           (sectionPhase === "confirm"
             ? 1
-            : sectionPhase === "complete"
-              ? 0.95
-              : sectionPhase === "reflection"
-                ? 0.8
-                : sectionPhase === "questions" && questionsInSection > 0
-                  ? 0.35 + (0.4 * (questionIndex + 1)) / questionsInSection
-                  : 0)) /
+            : sectionPhase === "reflection"
+              ? 0.85
+              : sectionPhase === "questions" && questionsInSection > 0
+                ? 0.2 + (0.55 * (questionIndex + 1)) / questionsInSection
+                : 0)) /
           sections.length) *
           100,
       )
     : answerProgress;
+
+  const microValidation =
+    useChapterFlow && sectionPhase === "questions"
+      ? getMicroValidation(sectionIndex, questionIndex, sections)
+      : null;
 
   const setAnswer = (id: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
@@ -330,6 +332,23 @@ export function AssessmentForm({
       }
       return next;
     });
+  };
+
+  const advanceFromChapterEnd = () => {
+    if (sectionIndex >= sections.length - 1) {
+      setSectionPhase("confirm");
+      return;
+    }
+    const nextIndex = sectionIndex + 1;
+    setSectionIndex(nextIndex);
+    const nextSection = sections[nextIndex];
+    if (nextSection && sectionHasAnswers(nextSection, answers)) {
+      setSectionPhase("questions");
+      setQuestionIndex(findFirstUnansweredQuestionIndex(nextSection, answers));
+    } else {
+      setSectionPhase("intro");
+      setQuestionIndex(0);
+    }
   };
 
   const goToSection = (index: number) => {
@@ -374,25 +393,7 @@ export function AssessmentForm({
     }
 
     if (sectionPhase === "reflection") {
-      setSectionPhase("complete");
-      return;
-    }
-
-    if (sectionPhase === "complete") {
-      if (sectionIndex >= sections.length - 1) {
-        setSectionPhase("confirm");
-        return;
-      }
-      const nextIndex = sectionIndex + 1;
-      setSectionIndex(nextIndex);
-      const nextSection = sections[nextIndex];
-      if (nextSection && sectionHasAnswers(nextSection, answers)) {
-        setSectionPhase("questions");
-        setQuestionIndex(findFirstUnansweredQuestionIndex(nextSection, answers));
-      } else {
-        setSectionPhase("intro");
-        setQuestionIndex(0);
-      }
+      advanceFromChapterEnd();
       return;
     }
 
@@ -403,7 +404,7 @@ export function AssessmentForm({
 
   const skipReflection = () => {
     if (sectionPhase !== "reflection") return;
-    setSectionPhase("complete");
+    advanceFromChapterEnd();
   };
 
   const goPrev = () => {
@@ -413,11 +414,6 @@ export function AssessmentForm({
     }
 
     if (sectionPhase === "confirm") {
-      setSectionPhase("complete");
-      return;
-    }
-
-    if (sectionPhase === "complete") {
       setSectionPhase("reflection");
       return;
     }
@@ -463,9 +459,9 @@ export function AssessmentForm({
   const showPrevious =
     !readOnly &&
     (useChapterFlow
-      ? sectionPhase === "complete" ||
-        sectionPhase === "reflection" ||
+      ? sectionPhase === "reflection" ||
         sectionPhase === "questions" ||
+        sectionPhase === "confirm" ||
         (sectionPhase === "intro" && sectionIndex > 0)
       : sectionIndex > 0);
 
@@ -477,9 +473,6 @@ export function AssessmentForm({
     if (sectionPhase === "intro") return CHAPTER_INTRO_CTA;
     if (sectionPhase === "reflection") return REFLECTION_CONTINUE_CTA;
     if (sectionPhase === "confirm") return SUBMIT_CONFIRM_CTA;
-    if (sectionPhase === "complete") {
-      return sectionIndex >= sections.length - 1 ? submitLabel : CHAPTER_COMPLETE_CTA;
-    }
     if (sectionPhase === "questions" && currentSection) {
       return questionIndex < currentSection.questions.length - 1
         ? CHAPTER_CONTINUE_CTA
@@ -488,11 +481,6 @@ export function AssessmentForm({
     return CHAPTER_CONTINUE_CTA;
   })();
 
-  const nextChapter = sections[sectionIndex + 1];
-  const journeyMilestone = useChapterFlow
-    ? getJourneyMilestone(sectionIndex, sections.length)
-    : null;
-
   return (
     <div className="assessment-root">
       <div className="assessment-shell">
@@ -500,9 +488,6 @@ export function AssessmentForm({
           <header className="assessment-header assessment-header--journey">
             <div className="assessment-progress assessment-progress--exploration" aria-live="polite">
               <p className="assessment-progress-message">{chapter.progressMessage}</p>
-              {journeyMilestone && sectionPhase === "intro" && (
-                <p className="assessment-progress-milestone">{journeyMilestone}</p>
-              )}
               <p className="assessment-progress-meta">
                 Chapter {sectionIndex + 1} of {sections.length} · About {minutesLeft} min left
                 {singleQuestionMode && questionsInSection > 1 &&
@@ -539,8 +524,8 @@ export function AssessmentForm({
           {sections.map((sec, i) => {
             const isComplete =
               i < sectionIndex ||
-              (i === sectionIndex && (sectionPhase === "complete" || sectionPhase === "confirm"));
-            const isActive = i === sectionIndex && sectionPhase !== "complete" && sectionPhase !== "confirm";
+              (i === sectionIndex && sectionPhase === "confirm");
+            const isActive = i === sectionIndex && sectionPhase !== "confirm";
             return (
               <button
                 key={sec.title}
@@ -570,14 +555,14 @@ export function AssessmentForm({
               )}
               <h2 className="assessment-chapter-title">{currentSection.title}</h2>
               <p className="assessment-chapter-intro-lead">{chapter.intro}</p>
-              <p className="assessment-chapter-intro-desc">{currentSection.desc}</p>
+              <p className="assessment-chapter-intro-desc">{chapter.whatToExpect}</p>
               <p className="assessment-chapter-time">About {INTAKE_MINUTES_PER_CHAPTER} minutes</p>
             </div>
           )}
 
           {currentSection && useChapterFlow && sectionPhase === "reflection" && (
             <div className="assessment-chapter-reflection">
-              <p className="assessment-chapter-kicker">{REFLECTION_PAUSE_LABEL}</p>
+              <p className="assessment-chapter-kicker">{REFLECTION_KICKER}</p>
               <h2 className="assessment-chapter-reflection-prompt">
                 {getChapterReflectionPrompt(sectionIndex)}
               </h2>
@@ -599,20 +584,6 @@ export function AssessmentForm({
             </div>
           )}
 
-          {currentSection && useChapterFlow && sectionPhase === "complete" && (
-            <div className="assessment-chapter-complete">
-              <p className="assessment-chapter-complete-message">{chapter.completionMessage}</p>
-              {chapter.transitionToNext && sectionIndex < sections.length - 1 && (
-                <p className="assessment-chapter-transition">{chapter.transitionToNext}</p>
-              )}
-              {nextChapter && sectionIndex < sections.length - 1 && (
-                <p className="assessment-chapter-complete-next">
-                  Up next: <span>{nextChapter.title}</span>
-                </p>
-              )}
-            </div>
-          )}
-
           {currentSection && (!useChapterFlow || sectionPhase === "questions") && (
             <>
               {useChapterFlow ? (
@@ -631,6 +602,10 @@ export function AssessmentForm({
                   <h2 className="assessment-section-heading">{currentSection.title}</h2>
                   <p className="assessment-section-desc">{currentSection.desc}</p>
                 </>
+              )}
+
+              {microValidation && (
+                <p className="assessment-micro-validation">{microValidation}</p>
               )}
 
               {singleQuestionMode && currentQuestion ? (
