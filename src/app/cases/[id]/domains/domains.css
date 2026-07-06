@@ -27,8 +27,6 @@
 .dm-domain-context {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1.5rem;
 }
 .dm-domain-title {
   margin: 0;
@@ -38,17 +36,12 @@
   color: var(--foreground);
 }
 .dm-domain-coverage {
-  margin: 0;
+  margin: 12px 0 0;
   font-size: 0.8125rem;
   color: var(--muted);
 }
-.dm-stage-nav {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
 .dm-stage-guidance {
-  margin: 0.875rem 0 0;
+  margin: 16px 0 0;
   font-size: 0.875rem;
   line-height: 1.5;
   font-weight: 400;
@@ -793,6 +786,7 @@
   display: inline-flex;
   align-self: flex-start;
   gap: 0.125rem;
+  margin-top: 20px;
   padding: 0.25rem;
   background: color-mix(in srgb, var(--foreground) 5%, var(--surface));
   border-radius: 10px;
@@ -803,8 +797,8 @@
   border: none;
   border-radius: 8px;
   padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 500;
   line-height: 1.25;
   background: transparent;
   color: var(--muted);
@@ -1254,11 +1248,14 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: 1rem 0 1.75rem;
-  margin: 0;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 0 0;
+  margin: 0 0 2rem;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-bottom: none;
 }
 
 .dm-stage-surface {
@@ -1524,11 +1521,14 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: 1rem 0 1.75rem;
-  margin: 0;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 0 0;
+  margin: 0 0 2rem;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-bottom: none;
 }
 
 .dm-stage-surface {

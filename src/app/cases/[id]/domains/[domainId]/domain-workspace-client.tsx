@@ -18,7 +18,7 @@ const STAGES: { id: WorkspaceStage; label: string; guidance: string }[] = [
   {
     id: "understand",
     label: "Understand",
-    guidance: "Review the available evidence before interpreting.",
+    guidance: "Review linked findings and source material before interpreting.",
   },
   {
     id: "formulate",
@@ -28,7 +28,7 @@ const STAGES: { id: WorkspaceStage; label: string; guidance: string }[] = [
   {
     id: "report",
     label: "Report",
-    guidance: "Translate your clinical reasoning into report-ready language.",
+    guidance: "Translate your clinical reasoning into concise report language.",
   },
 ];
 
@@ -338,32 +338,29 @@ export function DomainWorkspaceClient({
         <div className="dm-wrap">
           {error && <div className="assessment-alert">{error}</div>}
 
-          <div className="dm-sticky-chrome">
-            <div className="dm-domain-context">
-              <h1 className="dm-domain-title">{domain.label}</h1>
-              {coverage.expected > 0 && (
-                <p className="dm-domain-coverage">
-                  Coverage {coverage.percent}% ({coverage.present} of {coverage.expected} sources)
-                </p>
-              )}
-            </div>
+          <header className="dm-sticky-chrome">
+            <h1 className="dm-domain-title">{domain.label}</h1>
+            {coverage.expected > 0 && (
+              <p className="dm-domain-coverage">
+                Coverage {coverage.percent}% ({coverage.present} of {coverage.expected} sources)
+              </p>
+            )}
 
-            <div className="dm-stage-nav">
-              <nav className="dm-stage-tabs" aria-label="Workflow stages">
-                {STAGES.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
-                    onClick={() => setStage(s.id)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </nav>
-              <p className="dm-stage-guidance">{activeStage.guidance}</p>
-            </div>
-          </div>
+            <nav className="dm-stage-tabs" aria-label="Workflow stages">
+              {STAGES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`dm-stage-tab${stage === s.id ? " dm-stage-tab--active" : ""}`}
+                  onClick={() => setStage(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </nav>
+
+            <p className="dm-stage-guidance">{activeStage.guidance}</p>
+          </header>
 
           <div
             className={`dm-workspace-layout${stage === "report" ? " dm-workspace-layout--report" : ""}${stage === "formulate" ? " dm-workspace-layout--formulate" : ""}`}
