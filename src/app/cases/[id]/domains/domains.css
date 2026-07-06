@@ -1398,9 +1398,6 @@
 .dm-stage-root--formulate {
   --dm-stage-bg: var(--surface);
 }
-.dm-stage-root--formulate .assessment-shell {
-  max-width: 90rem;
-}
 .dm-stage-root--report {
   --dm-stage-bg: var(--surface);
 }
