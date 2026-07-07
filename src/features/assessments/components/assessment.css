@@ -5,6 +5,9 @@
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
+  --assessment-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --assessment-duration: 200ms;
+  --assessment-duration-slow: 280ms;
 }
 
 .assessment-shell {
@@ -64,6 +67,18 @@
   margin-bottom: 1.5rem;
 }
 
+.assessment-header--compact {
+  margin-bottom: 1rem;
+}
+
+.assessment-header--compact .assessment-progress--exploration {
+  margin-top: 0;
+}
+
+.assessment-header--compact .assessment-progress-meta {
+  margin-bottom: 0.15rem;
+}
+
 .assessment-progress-milestone {
   margin: 0.5rem 0 0.35rem;
   font-size: 0.875rem;
@@ -100,7 +115,8 @@
   height: 100%;
   background: #ced9dd;
   border-radius: 999px;
-  transition: width 0.25s ease;
+  transition: width var(--assessment-duration-slow) var(--assessment-ease);
+  will-change: width;
 }
 
 .assessment-section-nav {
@@ -118,7 +134,16 @@
   color: #6b7280;
   font-size: 0.8125rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color var(--assessment-duration) var(--assessment-ease),
+    color var(--assessment-duration) var(--assessment-ease),
+    background var(--assessment-duration) var(--assessment-ease),
+    box-shadow var(--assessment-duration) var(--assessment-ease);
+}
+
+.assessment-section-pill:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .assessment-section-pill:hover {
@@ -136,19 +161,95 @@
 .assessment-section-pill--complete {
   border-color: color-mix(in srgb, #059669 25%, #e5e7eb);
   color: #4b5563;
+  background: color-mix(in srgb, #ecfdf5 40%, #fff);
 }
 
 .assessment-section-pill-check {
+  display: inline-block;
   margin-right: 0.25rem;
   font-size: 0.6875rem;
   color: #059669;
+  animation: assessment-check-in var(--assessment-duration-slow) var(--assessment-ease);
+}
+
+.assessment-section-pill-label {
+  display: inline-block;
+  transition: color var(--assessment-duration) var(--assessment-ease);
+}
+
+@keyframes assessment-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .assessment-card {
+  position: relative;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 2rem;
+}
+
+.assessment-card-body {
+  animation: assessment-content-in var(--assessment-duration-slow) var(--assessment-ease);
+}
+
+@keyframes assessment-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.assessment-chapter-ack {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, #fff 94%, transparent);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  animation: assessment-ack-fade 1.2s var(--assessment-ease) forwards;
+}
+
+.assessment-chapter-ack-text {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #4b5563;
+}
+
+@keyframes assessment-ack-fade {
+  0% {
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  72% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 .assessment-card--interstitial {
@@ -278,14 +379,25 @@
 
 .assessment-scale-not-sure {
   align-self: flex-start;
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 0.95rem;
+  min-height: 2.75rem;
   border-radius: 999px;
   border: 1px dashed #d1d5db;
   background: transparent;
   color: #6b7280;
   font-size: 0.8125rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color var(--assessment-duration) var(--assessment-ease),
+    color var(--assessment-duration) var(--assessment-ease),
+    background var(--assessment-duration) var(--assessment-ease),
+    box-shadow var(--assessment-duration) var(--assessment-ease),
+    transform var(--assessment-duration) var(--assessment-ease);
+}
+
+.assessment-scale-not-sure:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .assessment-scale-not-sure:hover {
@@ -295,14 +407,15 @@
 
 .assessment-scale-not-sure--selected {
   border-style: solid;
-  border-color: #ced9dd;
+  border-color: #b8c8ce;
   background: #eef2f4;
   color: #334155;
   font-weight: 500;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .assessment-card--focus-question {
-  padding: 2.5rem 2rem 2rem;
+  padding: 3rem 2.25rem 2.25rem;
 }
 
 .assessment-question-header {
@@ -322,9 +435,10 @@
 }
 
 .assessment-question--focus .assessment-question-text {
-  font-size: 1.125rem;
-  line-height: 1.65;
-  margin-bottom: 1.5rem;
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  color: #111;
 }
 
 .assessment-submit-confirm {
@@ -339,25 +453,47 @@
 }
 
 .assessment-scale-option {
-  padding: 0.5rem 0.875rem;
+  padding: 0.625rem 1rem;
+  min-height: 2.75rem;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
   background: #fff;
   color: #4b5563;
   font-size: 0.8125rem;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition:
+    border-color var(--assessment-duration) var(--assessment-ease),
+    background var(--assessment-duration) var(--assessment-ease),
+    color var(--assessment-duration) var(--assessment-ease),
+    box-shadow var(--assessment-duration) var(--assessment-ease),
+    transform var(--assessment-duration) var(--assessment-ease);
 }
 
 .assessment-scale-option:hover {
   border-color: #d1d5db;
+  background: #fafafa;
+}
+
+.assessment-scale-option:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .assessment-scale-option--selected {
-  border-color: #ced9dd;
-  background: #ced9dd;
+  border-color: #b8c8ce;
+  background: #eef2f4;
   color: #1e293b;
   font-weight: 500;
+  transform: scale(1.02);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.07);
+}
+
+.assessment-scale-option:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.assessment-scale-option--selected:active:not(:disabled) {
+  transform: scale(1);
 }
 
 .assessment-textarea {
@@ -375,7 +511,8 @@
   box-sizing: border-box;
 }
 
-.assessment-textarea:focus {
+.assessment-textarea:focus,
+.assessment-textarea:focus-visible {
   outline: none;
   border-color: #93c5fd;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
@@ -385,18 +522,34 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 2rem;
+  margin-top: 2.5rem;
+  padding-top: 0.25rem;
   gap: 1rem;
 }
 
 .assessment-btn {
   padding: 0.625rem 1.25rem;
+  min-height: 2.75rem;
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background var(--assessment-duration) var(--assessment-ease),
+    border-color var(--assessment-duration) var(--assessment-ease),
+    color var(--assessment-duration) var(--assessment-ease),
+    box-shadow var(--assessment-duration) var(--assessment-ease),
+    transform var(--assessment-duration) var(--assessment-ease);
+}
+
+.assessment-btn:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.assessment-btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .assessment-btn--secondary {
@@ -607,6 +760,7 @@
 
 .assessment-btn--primary:hover {
   background: #b8c8ce;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .assessment-btn:disabled {
@@ -1142,10 +1296,10 @@ html.dark .assessment-theme-card--included {
   position: sticky;
   top: 0;
   z-index: 30;
-  border-bottom: 1px solid var(--border, #e5e7eb);
-  background: color-mix(in srgb, var(--surface, #fff) 95%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #e5e7eb) 60%, transparent);
+  background: color-mix(in srgb, var(--surface, #fff) 88%, transparent);
   backdrop-filter: blur(8px);
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1.5rem;
 }
 
 .intake-sticky-bar-inner {
@@ -1155,8 +1309,66 @@ html.dark .assessment-theme-card--included {
   gap: 1rem;
   max-width: 42rem;
   margin: 0 auto;
-  font-size: 0.8125rem;
-  color: #6b7280;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Client intake — responsive polish */
+@media (max-width: 640px) {
+  .assessment-shell {
+    padding: 1.75rem 1.125rem 3rem;
+  }
+
+  .assessment-card,
+  .assessment-card--interstitial,
+  .assessment-card--focus-question {
+    padding: 1.75rem 1.25rem 1.5rem;
+  }
+
+  .assessment-scale {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .assessment-scale-option {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .assessment-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .assessment-actions-primary {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .assessment-actions-primary .assessment-btn--primary {
+    width: 100%;
+  }
+
+  .assessment-btn--secondary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assessment-root *,
+  .assessment-root *::before,
+  .assessment-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .assessment-progress-fill {
+    will-change: auto;
+  }
 }
 
 html.dark .intake-welcome-legal {

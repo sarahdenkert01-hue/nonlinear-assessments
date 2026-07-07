@@ -14,6 +14,7 @@ import {
   REFLECTION_SKIP_CTA,
 } from "@/content/intake-reflections";
 import {
+  CHAPTER_COMPLETE_ACK,
   CHAPTER_CONTINUE_CTA,
   CHAPTER_INTRO_CTA,
   CHAPTER_PREVIOUS_CTA,
@@ -46,6 +47,13 @@ export interface AssessmentFormProps {
 }
 
 type SectionPhase = "intro" | "questions" | "reflection" | "confirm";
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 function NotSureButton({
   value,
@@ -264,7 +272,15 @@ export function AssessmentForm({
   const [questionIndex, setQuestionIndex] = useState(() =>
     initialQuestionIndex(sections, initialAnswers, sectionIndex, useChapterFlow),
   );
+  const [chapterAck, setChapterAck] = useState(false);
   const skipAnswersNotify = useRef(true);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (useChapterFlow && typeof window !== "undefined") {
@@ -293,9 +309,6 @@ export function AssessmentForm({
     singleQuestionMode && currentSection
       ? currentSection.questions[questionIndex]
       : undefined;
-
-  const completedChapters =
-    sectionPhase === "confirm" ? sectionIndex + 1 : sectionIndex;
 
   const chapterProgress = useChapterFlow
     ? Math.round(
@@ -351,6 +364,19 @@ export function AssessmentForm({
     }
   };
 
+  const beginChapterAdvance = () => {
+    if (prefersReducedMotion()) {
+      advanceFromChapterEnd();
+      return;
+    }
+    setChapterAck(true);
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    advanceTimerRef.current = setTimeout(() => {
+      setChapterAck(false);
+      advanceFromChapterEnd();
+    }, 1200);
+  };
+
   const goToSection = (index: number) => {
     setSectionIndex(index);
     if (!useChapterFlow) {
@@ -368,6 +394,8 @@ export function AssessmentForm({
   };
 
   const goNext = () => {
+    if (chapterAck) return;
+
     if (!useChapterFlow) {
       if (sectionIndex < sections.length - 1) {
         setSectionIndex((i) => i + 1);
@@ -393,7 +421,7 @@ export function AssessmentForm({
     }
 
     if (sectionPhase === "reflection") {
-      advanceFromChapterEnd();
+      beginChapterAdvance();
       return;
     }
 
@@ -404,7 +432,7 @@ export function AssessmentForm({
 
   const skipReflection = () => {
     if (sectionPhase !== "reflection") return;
-    advanceFromChapterEnd();
+    beginChapterAdvance();
   };
 
   const goPrev = () => {
@@ -481,21 +509,33 @@ export function AssessmentForm({
     return CHAPTER_CONTINUE_CTA;
   })();
 
+  const isQuestionFocus = useChapterFlow && sectionPhase === "questions";
+  const cardContentKey = `${sectionIndex}-${sectionPhase}-${questionIndex}`;
+
   return (
     <div className="assessment-root">
       <div className="assessment-shell">
         {useChapterFlow ? (
-          <header className="assessment-header assessment-header--journey">
+          <header
+            className={`assessment-header assessment-header--journey${isQuestionFocus ? " assessment-header--compact" : ""}`}
+          >
             <div className="assessment-progress assessment-progress--exploration" aria-live="polite">
-              <p className="assessment-progress-message">{chapter.progressMessage}</p>
+              {!isQuestionFocus && (
+                <p className="assessment-progress-message">{chapter.progressMessage}</p>
+              )}
               <p className="assessment-progress-meta">
-                Chapter {sectionIndex + 1} of {sections.length} · About {minutesLeft} min left
-                {singleQuestionMode && questionsInSection > 1 &&
-                  ` · ${questionInChapterLabel(questionIndex + 1, questionsInSection)}`}
-                {completedChapters > 0 &&
-                  ` · ${completedChapters} chapter${completedChapters === 1 ? "" : "s"} complete`}
+                {isQuestionFocus && questionsInSection > 1
+                  ? questionInChapterLabel(questionIndex + 1, questionsInSection)
+                  : `Chapter ${sectionIndex + 1} of ${sections.length} · About ${minutesLeft} min left`}
               </p>
-              <div className="assessment-progress-bar" aria-hidden>
+              <div
+                className="assessment-progress-bar"
+                role="progressbar"
+                aria-valuenow={chapterProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Assessment progress"
+              >
                 <div
                   className="assessment-progress-fill"
                   style={{ width: `${chapterProgress}%` }}
@@ -520,31 +560,48 @@ export function AssessmentForm({
           </header>
         )}
 
-        <nav className="assessment-section-nav" aria-label="Chapters">
-          {sections.map((sec, i) => {
-            const isComplete =
-              i < sectionIndex ||
-              (i === sectionIndex && sectionPhase === "confirm");
-            const isActive = i === sectionIndex && sectionPhase !== "confirm";
-            return (
-              <button
-                key={sec.title}
-                type="button"
-                className={`assessment-section-pill${isActive ? " assessment-section-pill--active" : ""}${isComplete ? " assessment-section-pill--complete" : ""}`}
-                onClick={() => !readOnly && goToSection(i)}
-                disabled={readOnly && i !== sectionIndex}
-                aria-current={isActive ? "step" : undefined}
-              >
-                {isComplete && <span className="assessment-section-pill-check" aria-hidden>✓</span>}
-                {sec.title}
-              </button>
-            );
-          })}
-        </nav>
+        {!isQuestionFocus && (
+          <nav className="assessment-section-nav" aria-label="Chapters">
+            {sections.map((sec, i) => {
+              const isComplete =
+                i < sectionIndex ||
+                (i === sectionIndex &&
+                  (sectionPhase === "reflection" || sectionPhase === "confirm"));
+              const isActive = i === sectionIndex && sectionPhase !== "confirm";
+              return (
+                <button
+                  key={sec.title}
+                  type="button"
+                  className={`assessment-section-pill${isActive ? " assessment-section-pill--active" : ""}${isComplete ? " assessment-section-pill--complete" : ""}`}
+                  onClick={() => !readOnly && goToSection(i)}
+                  disabled={readOnly && i !== sectionIndex}
+                  aria-current={isActive ? "step" : undefined}
+                  aria-label={
+                    isComplete ? `${sec.title}, completed` : sec.title
+                  }
+                >
+                  {isComplete && (
+                    <span className="assessment-section-pill-check" aria-hidden>
+                      ✓
+                    </span>
+                  )}
+                  <span className="assessment-section-pill-label">{sec.title}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
         <div
           className={`assessment-card${useChapterFlow && sectionPhase !== "questions" ? " assessment-card--interstitial" : ""}${singleQuestionMode ? " assessment-card--focus-question" : ""}`}
         >
+          {chapterAck && (
+            <div className="assessment-chapter-ack" role="status" aria-live="polite">
+              <span className="assessment-chapter-ack-text">{CHAPTER_COMPLETE_ACK}</span>
+            </div>
+          )}
+
+          <div key={cardContentKey} className="assessment-card-body">
           {currentSection && useChapterFlow && sectionPhase === "intro" && (
             <div className="assessment-chapter-intro">
               <p className="assessment-chapter-kicker">
@@ -586,18 +643,7 @@ export function AssessmentForm({
 
           {currentSection && (!useChapterFlow || sectionPhase === "questions") && (
             <>
-              {useChapterFlow ? (
-                <div className="assessment-question-header">
-                  <p className="assessment-chapter-kicker assessment-chapter-kicker--inline">
-                    {currentSection.title}
-                  </p>
-                  {questionsInSection > 1 && (
-                    <p className="assessment-question-progress">
-                      {questionInChapterLabel(questionIndex + 1, questionsInSection)}
-                    </p>
-                  )}
-                </div>
-              ) : (
+              {!useChapterFlow && (
                 <>
                   <h2 className="assessment-section-heading">{currentSection.title}</h2>
                   <p className="assessment-section-desc">{currentSection.desc}</p>
@@ -669,12 +715,14 @@ export function AssessmentForm({
                   type="button"
                   className="assessment-btn assessment-btn--primary"
                   onClick={goNext}
+                  disabled={chapterAck}
                 >
                   {primaryLabel}
                 </button>
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

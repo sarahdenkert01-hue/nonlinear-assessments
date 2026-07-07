@@ -116,3 +116,5 @@ export const CHAPTER_INTRO_CTA = "Begin this chapter";
 export const CHAPTER_CONTINUE_CTA = "Continue";
 
 export const CHAPTER_PREVIOUS_CTA = "Back";
+
+export const CHAPTER_COMPLETE_ACK = "Chapter complete";
