@@ -54,6 +54,7 @@
   line-height: 1.5;
   font-weight: 500;
   color: #374151;
+  animation: assessment-message-in 360ms var(--assessment-ease);
 }
 
 .assessment-progress-meta {
@@ -119,6 +120,86 @@
   will-change: width;
 }
 
+.assessment-progress-fill--transitioning {
+  transition-duration: 580ms;
+  transition-timing-function: cubic-bezier(0.33, 1, 0.45, 1);
+}
+
+.assessment-progress-complete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #4b5563;
+  animation: assessment-progress-complete 820ms var(--assessment-ease) forwards;
+}
+
+.assessment-progress-complete-icon {
+  display: flex;
+  color: #059669;
+  animation: assessment-complete-icon 820ms var(--assessment-ease) forwards;
+}
+
+@keyframes assessment-progress-complete {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes assessment-complete-icon {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes assessment-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .assessment-section-nav {
   display: flex;
   flex-wrap: wrap;
@@ -164,12 +245,53 @@
   background: color-mix(in srgb, #ecfdf5 40%, #fff);
 }
 
+.assessment-section-pill--completing {
+  border-color: color-mix(in srgb, #059669 40%, #e5e7eb);
+  background: color-mix(in srgb, #ecfdf5 60%, #fff);
+  transform: scale(0.97);
+}
+
+.assessment-section-pill--completing .assessment-section-pill-label {
+  opacity: 0.55;
+}
+
+.assessment-section-pill--incoming {
+  border-color: #b8c8ce;
+  background: #f8fafb;
+  color: #334155;
+  font-weight: 500;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #ced9dd 22%, transparent);
+  animation: assessment-pill-incoming 520ms var(--assessment-ease);
+}
+
+@keyframes assessment-pill-incoming {
+  from {
+    opacity: 0.65;
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 color-mix(in srgb, #ced9dd 0%, transparent);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, #ced9dd 22%, transparent);
+  }
+}
+
+.assessment-section-nav--transitioning {
+  pointer-events: none;
+}
+
 .assessment-section-pill-check {
   display: inline-block;
   margin-right: 0.25rem;
   font-size: 0.6875rem;
   color: #059669;
   animation: assessment-check-in var(--assessment-duration-slow) var(--assessment-ease);
+}
+
+.assessment-section-pill-check--completing {
+  animation: assessment-check-complete 480ms var(--assessment-ease);
 }
 
 .assessment-section-pill-label {
@@ -189,6 +311,23 @@
   }
 }
 
+@keyframes assessment-check-complete {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .assessment-card {
   position: relative;
   background: #fff;
@@ -197,8 +336,16 @@
   padding: 2rem;
 }
 
-.assessment-card-body {
+.assessment-card-body:not(.assessment-card-body--exit):not(.assessment-card-body--enter) {
   animation: assessment-content-in var(--assessment-duration-slow) var(--assessment-ease);
+}
+
+.assessment-card-body--exit {
+  animation: assessment-content-exit 400ms var(--assessment-ease) forwards;
+}
+
+.assessment-card-body--enter {
+  animation: assessment-content-enter 480ms var(--assessment-ease) forwards;
 }
 
 @keyframes assessment-content-in {
@@ -213,43 +360,32 @@
   }
 }
 
-.assessment-chapter-ack {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, #fff 94%, transparent);
-  backdrop-filter: blur(4px);
-  pointer-events: none;
-  animation: assessment-ack-fade 1.2s var(--assessment-ease) forwards;
+@keyframes assessment-content-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
 }
 
-.assessment-chapter-ack-text {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: #4b5563;
+@keyframes assessment-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes assessment-ack-fade {
-  0% {
-    opacity: 0;
-  }
-
-  18% {
-    opacity: 1;
-  }
-
-  72% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-  }
+.assessment-card--transitioning {
+  overflow: hidden;
 }
 
 .assessment-card--interstitial {
@@ -756,6 +892,36 @@
 .assessment-btn--primary {
   background: #ced9dd;
   color: #1e293b;
+  position: relative;
+  overflow: hidden;
+}
+
+.assessment-btn--advancing {
+  pointer-events: none;
+  opacity: 0.88;
+}
+
+.assessment-btn--advancing::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: color-mix(in srgb, #1e293b 28%, transparent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: assessment-btn-advance 540ms var(--assessment-ease) forwards;
+}
+
+@keyframes assessment-btn-advance {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .assessment-btn--primary:hover {
