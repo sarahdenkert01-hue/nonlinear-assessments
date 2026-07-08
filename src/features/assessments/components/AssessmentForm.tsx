@@ -438,10 +438,6 @@ export function AssessmentForm({
 
   const isQuestionFocus = useChapterFlow && sectionPhase === "questions";
   const cardContentKey = `${sectionIndex}-${sectionPhase}-${questionIndex}`;
-  const cardBodyClass =
-    useChapterFlow && (sectionPhase === "intro" || sectionPhase === "confirm")
-      ? "assessment-card-body assessment-card-body--page"
-      : "assessment-card-body";
 
   return (
     <div className="assessment-root">
@@ -525,7 +521,7 @@ export function AssessmentForm({
         <div
           className={`assessment-card${useChapterFlow && sectionPhase !== "questions" ? " assessment-card--interstitial" : ""}${singleQuestionMode ? " assessment-card--focus-question" : ""}`}
         >
-          <div key={cardContentKey} className={cardBodyClass}>
+          <div key={cardContentKey} className="assessment-card-body">
           {currentSection && useChapterFlow && sectionPhase === "intro" && (
             <div className="assessment-chapter-intro">
               <p className="assessment-chapter-kicker">
