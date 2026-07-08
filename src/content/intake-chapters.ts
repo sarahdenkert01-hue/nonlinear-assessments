@@ -5,94 +5,76 @@ export const INTAKE_TOTAL_MINUTES = 25;
 export const INTAKE_MINUTES_PER_CHAPTER = 3;
 
 export type ChapterContent = {
+  /** Quiet progress line — not a headline. */
   progressMessage: string;
-  /** Why these questions matter — one short paragraph. */
-  intro: string;
-  /** What the client will be asked — one practical sentence. */
-  whatToExpect: string;
-  /** Brief handoff from the previous chapter (shown on intro, not a separate screen). */
-  bridgeFromPrevious?: string;
+  /** Book-like opening. Each chapter has its own tone. */
+  introParagraphs: readonly string[];
 };
 
 export const CHAPTER_CONTENT: ChapterContent[] = [
   {
-    progressMessage: "Understanding how you move through the world.",
-    intro:
-      "How you adapt in different settings shapes your daily life. These questions help your clinician see that context — not judge it.",
-    whatToExpect:
-      "You'll be asked how you present yourself in different situations and what it costs you to adapt.",
+    progressMessage: "How you move through the world",
+    introParagraphs: [
+      "Most of us learn early how to read a room — what to show, what to hide, how much of yourself feels safe to bring.",
+      "This chapter isn't about whether you do that well. It's about what it costs, and what it gives you.",
+    ],
   },
   {
-    progressMessage: "Exploring attention and mental energy.",
-    bridgeFromPrevious:
-      "You've shared how you move through the world. Next we'll explore attention and mental energy.",
-    intro:
-      "Focus and getting things done look different for everyone. This chapter maps your patterns over the past several months.",
-    whatToExpect:
-      "You'll answer questions about starting tasks, sustaining focus, and mental effort.",
+    progressMessage: "Attention and mental energy",
+    introParagraphs: [
+      "Every brain has its own rhythm.",
+      "Some days ideas arrive faster than actions. Some tasks feel impossible until suddenly they aren't.",
+      "This chapter explores how your attention moves — not whether you're productive enough.",
+    ],
   },
   {
-    progressMessage: "Looking at your body and nervous system.",
-    bridgeFromPrevious:
-      "You've covered focus and mental energy. Next we'll look at how your body responds to sensation and environment.",
-    intro:
-      "Physical comfort and overload are part of how you experience the world. Your clinician needs this picture too.",
-    whatToExpect:
-      "You'll be asked about physical sensations, your environment, and how your body responds.",
+    progressMessage: "Your body and nervous system",
+    introParagraphs: [
+      "Long before you have words for it, your body is keeping track — of noise, of touch, of whether a space feels safe.",
+      "What overwhelms you and what steadies you is worth naming. Not as a flaw, but as information.",
+    ],
   },
   {
-    progressMessage: "Exploring emotions and how you handle them.",
-    bridgeFromPrevious:
-      "You've shared how your body experiences the world. Next we'll turn to emotions.",
-    intro:
-      "Emotional life is rarely simple. These questions help your clinician understand how feelings show up for you day to day.",
-    whatToExpect:
-      "You'll reflect on how you experience, process, and express emotions.",
+    progressMessage: "Emotions and how you handle them",
+    introParagraphs: [
+      "Feelings don't always arrive with labels. Sometimes they're loud. Sometimes they come late — hours after the moment that triggered them.",
+      "We'll look at how emotion moves through you: intensity, expression, and what happens when there's too much or too little room for it.",
+    ],
   },
   {
-    progressMessage: "Exploring social experiences and relationships.",
-    bridgeFromPrevious:
-      "You're halfway through — what you've shared is already building a picture. Next: relationships and social life.",
-    intro:
-      "Connection and belonging matter. This chapter looks at the social situations that energize or drain you.",
-    whatToExpect:
-      "You'll answer questions about relationships and how you experience social situations.",
+    progressMessage: "Connection and social life",
+    introParagraphs: [
+      "You're past the halfway point. What you've shared is already adding depth.",
+      "Connection looks different for everyone — the friendships that sustain you, the rooms that drain you, the loneliness that no one sees.",
+    ],
   },
   {
-    progressMessage: "Exploring energy, burnout, and recovery.",
-    bridgeFromPrevious:
-      "You've described your social world. Next we'll look at energy — what depletes you and what helps you recover.",
-    intro:
-      "Sustainability matters. These questions map how hard you push, how you recover, and what happens when reserves run low.",
-    whatToExpect:
-      "You'll be asked about your overall energy, resilience, and recovery.",
+    progressMessage: "Energy, burnout, and recovery",
+    introParagraphs: [
+      "Effort has a cost. Even when you're keeping up, something may be running quietly in the background.",
+      "This chapter is about the push and the recovery — what depletes you, and what actually helps you come back.",
+    ],
   },
   {
-    progressMessage: "Exploring identity and sense of self.",
-    bridgeFromPrevious:
-      "You've named your energy patterns. Next we'll look at how you understand yourself.",
-    intro:
-      "Self-understanding takes time. This chapter invites you to reflect on who you are and how you see your place in the world.",
-    whatToExpect:
-      "You'll answer questions about identity — there are no right or wrong answers here.",
+    progressMessage: "Identity and sense of self",
+    introParagraphs: [
+      "Who you are rarely fits in a single box.",
+      "Some parts feel settled. Others are still forming. Both belong in the picture.",
+    ],
   },
   {
-    progressMessage: "Bringing your broader story into view.",
-    bridgeFromPrevious:
-      "Almost there. Next we'll step back to the larger patterns in your story.",
-    intro:
-      "Life experiences and patterns you've noticed help situate everything else. This chapter looks at the bigger picture.",
-    whatToExpect:
-      "A few broader questions about your experiences and the patterns you've noticed along the way.",
+    progressMessage: "The broader picture",
+    introParagraphs: [
+      "Step back for a moment.",
+      "The patterns you've noticed across years — what repeats, what changed, what you learned about yourself along the way.",
+    ],
   },
   {
-    progressMessage: "Your space to share in your own words.",
-    bridgeFromPrevious:
-      "You've moved through eight chapters. This last one is open — whatever feels important to say.",
-    intro:
-      "Some things don't fit a checklist. This chapter gives you room to share what matters most to you.",
-    whatToExpect:
-      "Open questions — share difficulties, strengths, or anything you want your clinician to know.",
+    progressMessage: "In your own words",
+    introParagraphs: [
+      "Some of the most important things don't fit a scale.",
+      "This last chapter is open space — whatever you want your clinician to understand that the earlier chapters couldn't capture.",
+    ],
   },
 ];
 
@@ -111,10 +93,8 @@ export function estimatedMinutesRemaining(
   );
 }
 
-export const CHAPTER_INTRO_CTA = "Begin this chapter";
+export const CHAPTER_INTRO_CTA = "Begin chapter";
 
 export const CHAPTER_CONTINUE_CTA = "Continue";
 
 export const CHAPTER_PREVIOUS_CTA = "Back";
-
-export const CHAPTER_COMPLETE_ACK = "Chapter complete";

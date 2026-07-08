@@ -7,14 +7,6 @@ import {
   questionInChapterLabel,
 } from "@/content/intake-confirm";
 import {
-  getChapterReflectionPrompt,
-  REFLECTION_CONTINUE_CTA,
-  REFLECTION_KICKER,
-  REFLECTION_OPTIONAL_HINT,
-  REFLECTION_SKIP_CTA,
-} from "@/content/intake-reflections";
-import {
-  CHAPTER_COMPLETE_ACK,
   CHAPTER_CONTINUE_CTA,
   CHAPTER_INTRO_CTA,
   CHAPTER_PREVIOUS_CTA,
@@ -24,7 +16,6 @@ import {
 } from "@/content/intake-chapters";
 import { getMicroValidation } from "@/content/intake-validations";
 import { AGREEMENT_OPTIONS, FREQUENCY_OPTIONS, NOT_SURE_OPTION } from "../data/questions";
-import { reflectionKey } from "../lib/reflections";
 import { buildSections, countAnsweredQuestions } from "../lib/scoring";
 import type { AssessmentAnswers, AssessmentQuestion, AssessmentSection } from "../types";
 import "./assessment.css";
@@ -46,15 +37,15 @@ export interface AssessmentFormProps {
   explorationFlow?: boolean;
 }
 
-type SectionPhase = "intro" | "questions" | "reflection" | "confirm";
+type SectionPhase = "intro" | "questions" | "confirm";
 
 type ChapterTransition = {
   completedIndex: number;
   phase: "exiting" | "entering";
 } | null;
 
-const CHAPTER_TRANSITION_ADVANCE_MS = 420;
-const CHAPTER_TRANSITION_TOTAL_MS = 960;
+const CHAPTER_TRANSITION_ADVANCE_MS = 260;
+const CHAPTER_TRANSITION_TOTAL_MS = 620;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -326,11 +317,9 @@ export function AssessmentForm({
         ((sectionIndex +
           (sectionPhase === "confirm"
             ? 1
-            : sectionPhase === "reflection"
-              ? 0.85
-              : sectionPhase === "questions" && questionsInSection > 0
-                ? 0.2 + (0.55 * (questionIndex + 1)) / questionsInSection
-                : 0)) /
+            : sectionPhase === "questions" && questionsInSection > 0
+              ? 0.15 + (0.7 * (questionIndex + 1)) / questionsInSection
+              : 0)) /
           sections.length) *
           100,
       )
@@ -348,19 +337,6 @@ export function AssessmentForm({
 
   const setAnswer = (id: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const setReflection = (chapterIndex: number, value: string) => {
-    const key = reflectionKey(chapterIndex);
-    setAnswers((prev) => {
-      const next = { ...prev };
-      if (value.trim()) {
-        next[key] = value;
-      } else {
-        delete next[key];
-      }
-      return next;
-    });
   };
 
   const advanceFromChapterEnd = () => {
@@ -441,11 +417,6 @@ export function AssessmentForm({
         setQuestionIndex((i) => i + 1);
         return;
       }
-      setSectionPhase("reflection");
-      return;
-    }
-
-    if (sectionPhase === "reflection") {
       beginChapterAdvance();
       return;
     }
@@ -453,11 +424,6 @@ export function AssessmentForm({
     if (sectionPhase === "confirm") {
       onComplete?.(answers);
     }
-  };
-
-  const skipReflection = () => {
-    if (sectionPhase !== "reflection" || chapterTransition) return;
-    beginChapterAdvance();
   };
 
   const goPrev = () => {
@@ -469,15 +435,13 @@ export function AssessmentForm({
     }
 
     if (sectionPhase === "confirm") {
-      setSectionPhase("reflection");
-      return;
-    }
-
-    if (sectionPhase === "reflection") {
+      const lastIndex = sections.length - 1;
+      const lastSection = sections[lastIndex];
+      setSectionIndex(lastIndex);
       setSectionPhase("questions");
-      if (currentSection) {
-        setQuestionIndex(Math.max(currentSection.questions.length - 1, 0));
-      }
+      setQuestionIndex(
+        lastSection ? Math.max(lastSection.questions.length - 1, 0) : 0,
+      );
       return;
     }
 
@@ -514,8 +478,7 @@ export function AssessmentForm({
   const showPrevious =
     !readOnly &&
     (useChapterFlow
-      ? sectionPhase === "reflection" ||
-        sectionPhase === "questions" ||
+      ? sectionPhase === "questions" ||
         sectionPhase === "confirm" ||
         (sectionPhase === "intro" && sectionIndex > 0)
       : sectionIndex > 0);
@@ -526,13 +489,7 @@ export function AssessmentForm({
       return sectionIndex < sections.length - 1 ? CHAPTER_CONTINUE_CTA : submitLabel;
     }
     if (sectionPhase === "intro") return CHAPTER_INTRO_CTA;
-    if (sectionPhase === "reflection") return REFLECTION_CONTINUE_CTA;
     if (sectionPhase === "confirm") return SUBMIT_CONFIRM_CTA;
-    if (sectionPhase === "questions" && currentSection) {
-      return questionIndex < currentSection.questions.length - 1
-        ? CHAPTER_CONTINUE_CTA
-        : CHAPTER_CONTINUE_CTA;
-    }
     return CHAPTER_CONTINUE_CTA;
   })();
 
@@ -556,23 +513,6 @@ export function AssessmentForm({
             className={`assessment-header assessment-header--journey${isQuestionFocus ? " assessment-header--compact" : ""}`}
           >
             <div className="assessment-progress assessment-progress--exploration" aria-live="polite">
-              {chapterTransition && (
-                <p className="assessment-progress-complete" role="status">
-                  <span className="assessment-progress-complete-icon" aria-hidden>
-                    <svg viewBox="0 0 20 20" width="15" height="15" fill="none">
-                      <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.5" />
-                      <path
-                        d="M6.5 10.2 8.8 12.5 13.5 7.8"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  {CHAPTER_COMPLETE_ACK}
-                </p>
-              )}
               {!isQuestionFocus && (
                 <p key={chapter.progressMessage} className="assessment-progress-message">
                   {chapter.progressMessage}
@@ -629,9 +569,6 @@ export function AssessmentForm({
                 isCompleting ||
                 (chapterTransition?.phase === "entering" &&
                   i === chapterTransition.completedIndex) ||
-                (i === sectionIndex &&
-                  sectionPhase === "reflection" &&
-                  !chapterTransition) ||
                 (i === sectionIndex && sectionPhase === "confirm");
               const isIncoming =
                 chapterTransition?.phase === "entering" && i === sectionIndex;
@@ -673,30 +610,15 @@ export function AssessmentForm({
               <p className="assessment-chapter-kicker">
                 Chapter {sectionIndex + 1} of {sections.length}
               </p>
-              {sectionIndex > 0 && chapter.bridgeFromPrevious && (
-                <p className="assessment-chapter-bridge">{chapter.bridgeFromPrevious}</p>
-              )}
               <h2 className="assessment-chapter-title">{currentSection.title}</h2>
-              <p className="assessment-chapter-intro-lead">{chapter.intro}</p>
-              <p className="assessment-chapter-intro-desc">{chapter.whatToExpect}</p>
+              <div className="assessment-chapter-intro-body">
+                {chapter.introParagraphs.map((paragraph) => (
+                  <p key={paragraph} className="assessment-chapter-intro-paragraph">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
               <p className="assessment-chapter-time">About {INTAKE_MINUTES_PER_CHAPTER} minutes</p>
-            </div>
-          )}
-
-          {currentSection && useChapterFlow && sectionPhase === "reflection" && (
-            <div className="assessment-chapter-reflection">
-              <p className="assessment-chapter-kicker">{REFLECTION_KICKER}</p>
-              <h2 className="assessment-chapter-reflection-prompt">
-                {getChapterReflectionPrompt(sectionIndex)}
-              </h2>
-              <p className="assessment-chapter-reflection-hint">{REFLECTION_OPTIONAL_HINT}</p>
-              <textarea
-                className="assessment-textarea assessment-chapter-reflection-input"
-                value={answers[reflectionKey(sectionIndex)] ?? ""}
-                onChange={(e) => setReflection(sectionIndex, e.target.value)}
-                placeholder="Share as much or as little as you'd like..."
-                rows={4}
-              />
             </div>
           )}
 
@@ -765,23 +687,14 @@ export function AssessmentForm({
                     type="button"
                     className="assessment-btn assessment-btn--ghost"
                     onClick={goPrev}
+                    disabled={isTransitioning}
                   >
                     {SUBMIT_CONFIRM_BACK}
                   </button>
                 )}
-                {useChapterFlow && sectionPhase === "reflection" && (
-                  <button
-                    type="button"
-                    className="assessment-btn assessment-btn--ghost"
-                    onClick={skipReflection}
-                    disabled={isTransitioning}
-                  >
-                    {REFLECTION_SKIP_CTA}
-                  </button>
-                )}
                 <button
                   type="button"
-                  className={`assessment-btn assessment-btn--primary${isTransitioning ? " assessment-btn--advancing" : ""}`}
+                  className="assessment-btn assessment-btn--primary"
                   onClick={goNext}
                   disabled={isTransitioning}
                   aria-busy={isTransitioning}
