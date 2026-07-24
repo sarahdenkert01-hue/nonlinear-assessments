@@ -11,37 +11,48 @@ import {
 } from "@/lib/episodes";
 import { MODULE_KEYS, getModuleDefinition } from "@/lib/modules";
 import { IntakeBlocked } from "../../intake-blocked";
+import {
+  IntakeUnavailable,
+  isDatabaseConnectivityError,
+} from "../../intake-unavailable";
 import { IntakeConsentRedirect } from "./consent-redirect";
 
 type PageProps = { params: Promise<{ token: string; moduleKey: string }> };
 
 export default async function IntakeModulePage({ params }: PageProps) {
   const { token, moduleKey } = await params;
-  const session = await getSessionByToken(token);
-  const denial = getIntakeAccessDenial(session);
-  if (denial === "not_found") notFound();
-  if (denial) return <IntakeBlocked reason={denial} />;
 
-  if (!hasConsent(session!)) {
-    return <IntakeConsentRedirect token={token} />;
-  }
+  try {
+    const session = await getSessionByToken(token);
+    const denial = getIntakeAccessDenial(session);
+    if (denial === "not_found") notFound();
+    if (denial) return <IntakeBlocked reason={denial} />;
 
-  const def = getModuleDefinition(moduleKey);
-  const moduleRecord = await getModuleByTokenAndKey(token, moduleKey);
-  if (!moduleRecord) notFound();
+    if (!hasConsent(session!)) {
+      return <IntakeConsentRedirect token={token} />;
+    }
 
-  if (moduleKey === MODULE_KEYS.SCREENER || def?.renderer === "assessment-form") {
-    return <ScreenerModule token={token} module={moduleRecord} />;
-  }
-  if (moduleKey === MODULE_KEYS.LIFE_MAP || def?.renderer === "developmental-life-map") {
-    return <DevelopmentalLifeMapModule token={token} module={moduleRecord} />;
-  }
-  if (
-    moduleKey === MODULE_KEYS.GUIDED_REFLECTION ||
-    def?.renderer === "guided-reflection"
-  ) {
-    return <GuidedReflectionModule token={token} module={moduleRecord} />;
-  }
+    const def = getModuleDefinition(moduleKey);
+    const moduleRecord = await getModuleByTokenAndKey(token, moduleKey);
+    if (!moduleRecord) notFound();
 
-  notFound();
+    if (moduleKey === MODULE_KEYS.SCREENER || def?.renderer === "assessment-form") {
+      return <ScreenerModule token={token} module={moduleRecord} />;
+    }
+    if (moduleKey === MODULE_KEYS.LIFE_MAP || def?.renderer === "developmental-life-map") {
+      return <DevelopmentalLifeMapModule token={token} module={moduleRecord} />;
+    }
+    if (
+      moduleKey === MODULE_KEYS.GUIDED_REFLECTION ||
+      def?.renderer === "guided-reflection"
+    ) {
+      return <GuidedReflectionModule token={token} module={moduleRecord} />;
+    }
+
+    notFound();
+  } catch (err) {
+    const isDb = isDatabaseConnectivityError(err);
+    console.error("[intake/module] failed to load", isDb ? "database_unreachable" : "unexpected");
+    return <IntakeUnavailable reason={isDb ? "database" : "unexpected"} />;
+  }
 }
