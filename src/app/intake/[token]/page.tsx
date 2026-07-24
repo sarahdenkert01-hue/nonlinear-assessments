@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
-import { getSessionByToken } from "@/lib/episodes";
+import { getClientEpisodeByToken, getSessionByToken } from "@/lib/episodes";
 import { IntakeBlocked } from "./intake-blocked";
 import { IntakeClient } from "./intake-client";
 
@@ -12,5 +12,9 @@ export default async function IntakePage({ params }: PageProps) {
   const denial = getIntakeAccessDenial(session);
   if (denial === "not_found") notFound();
   if (denial) return <IntakeBlocked reason={denial} />;
-  return <IntakeClient session={session!} />;
+
+  const episode = await getClientEpisodeByToken(token);
+  if (!episode) notFound();
+
+  return <IntakeClient session={session!} episode={episode} />;
 }

@@ -7,10 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Sprint 1 introduces the durable spine: Client -> AssessmentEpisode -> ModuleInstance -> Response.
-// The clinician workflow status (DRAFT/SUBMITTED/REVIEWED) still lives on the episode so the
-// existing dashboard/review/intake logic keeps working unchanged. A later sprint introduces the
-// richer episode lifecycle. For now every episode has exactly one Nonlinear screener module.
+// Sprint 1 introduced the durable spine: Client -> AssessmentEpisode -> ModuleInstance -> Response.
+// Episodes may contain multiple client-facing modules (screener + explorations). The clinician
+// workflow status (DRAFT/SUBMITTED/REVIEWED) still lives on the episode. Screener submission
+// moves the episode out of DRAFT so findings/domains unlock; other modules track their own
+// ModuleStatus independently.
 
 enum SessionStatus {
   DRAFT

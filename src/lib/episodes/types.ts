@@ -1,4 +1,5 @@
 import type { AssessmentAnswers, ClinicianOverrides } from "@/features/assessments";
+import type { ClientModuleRecord } from "@/lib/modules/types";
 
 export type SessionStatus = "DRAFT" | "SUBMITTED" | "REVIEWED";
 
@@ -18,10 +19,11 @@ export interface ClientRecord {
   updatedAt: string;
 }
 
-// A single, flat view of an episode + its (Sprint 1) one client module + its answers.
+// A single, flat view of an episode + its screener module + screener answers.
 // The field shape is intentionally unchanged from the previous AssessmentSession record so the
 // rest of the app keeps working while the underlying tables change. `AssessmentSessionRecord`
 // remains exported as an alias for the files that still use that name.
+// Prefer ClientAssessmentEpisode / ClientModuleRecord for multi-module journey flows.
 export interface EpisodeRecord {
   id: string;
   token: string;
@@ -56,7 +58,11 @@ export interface ModuleSummary {
   audience: "CLIENT" | "CLINICIAN";
   status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "COMPLETED";
   answeredCount: number;
+  submittedAt: string | null;
+  title: string;
 }
+
+export type { ClientModuleRecord };
 
 export interface CreateSessionInput {
   clientName?: string;

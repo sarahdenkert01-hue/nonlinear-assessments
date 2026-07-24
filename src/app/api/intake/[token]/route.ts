@@ -10,20 +10,12 @@ import {
 
 type RouteContext = { params: Promise<{ token: string }> };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const { token } = await context.params;
-  const session = await getSessionByToken(token);
-  if (!session) return jsonNotFound("Intake session");
-  const denial = getIntakeAccessDenial(session);
-  if (denial && denial !== "consent_required") {
-    return jsonError(
-      denial === "revoked" ? "Link revoked" : "Link expired",
-      410,
-    );
-  }
-  return NextResponse.json({ session });
-}
-
+/**
+ * Legacy screener autosave.
+ * Client journey UIs now PATCH `/api/intake/[token]/modules/[moduleKey]` instead.
+ * GET was removed: nothing in the app called it; episode state is loaded via
+ * server-rendered `/intake/[token]` and `/api/intake/[token]/modules`.
+ */
 export async function PATCH(request: Request, context: RouteContext) {
   const { token } = await context.params;
 
@@ -40,6 +32,9 @@ export async function PATCH(request: Request, context: RouteContext) {
             : "Consent required",
         denial === "consent_required" ? 403 : 410,
       );
+    }
+    if (!existing.consentAcceptedAt) {
+      return jsonError("Consent required", 403);
     }
 
     const body = await request.json();

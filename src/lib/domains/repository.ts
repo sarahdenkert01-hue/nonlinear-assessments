@@ -146,8 +146,7 @@ async function loadFindingRefs(
     where: { id: episodeId },
     include: { modules: { include: { responses: true } } },
   });
-  const clientModule =
-    episode?.modules.find((m) => m.audience === "CLIENT") ?? episode?.modules[0];
+  const clientModule = episode?.modules.find((m) => m.moduleKey === "nonlinear-screener");
   const answers = clientModule ? responsesToAnswers(clientModule.responses) : {};
 
   const findings = await prisma.finding.findMany({

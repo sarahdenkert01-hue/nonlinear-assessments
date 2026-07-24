@@ -60,8 +60,9 @@ Open **http://localhost:3000**
 
 | Route | Auth |
 |-------|------|
-| `/intake/[token]` | Public — client questionnaire |
-| `/api/intake/[token]` | Public — client save/submit |
+| `/intake/[token]` | Public — client assessment journey |
+| `/api/intake/[token]` (PATCH) | Public — legacy screener autosave |
+| `/api/intake/[token]/modules…` | Public — journey module load/save/submit |
 | `/dashboard`, `/cases/*`, `/api/intake` (POST) | **Clerk** — clinicians only |
 | `/dev/preview` | Public in **development** only — full UI preview |
 

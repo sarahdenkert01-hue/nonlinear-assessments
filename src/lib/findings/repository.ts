@@ -38,9 +38,9 @@ function parseOverrides(value: Prisma.JsonValue | null): ClinicianOverrides {
   return {};
 }
 
-// The one client-facing module for an episode (Sprint 2 keeps this single-module).
+// Prefer the Nonlinear screener only — never fall back to exploration modules.
 function clientModuleOf(episode: EpisodeWithResponses) {
-  return episode.modules.find((m) => m.audience === "CLIENT") ?? episode.modules[0] ?? null;
+  return episode.modules.find((m) => m.moduleKey === "nonlinear-screener") ?? null;
 }
 
 function toRecord(

@@ -21,3 +21,23 @@ export function answersToRows(
 ): { itemId: string; value: string }[] {
   return Object.entries(answers).map(([itemId, value]) => ({ itemId, value }));
 }
+
+/** Generic module payload: preserves JSON (objects/arrays) for exploration modules. */
+export type ModuleDataPayload = Record<string, unknown>;
+
+export function responsesToModuleData(rows: ResponseRow[]): ModuleDataPayload {
+  const data: ModuleDataPayload = {};
+  for (const row of rows) {
+    data[row.itemId] = row.value as unknown;
+  }
+  return data;
+}
+
+export function moduleDataToRows(
+  data: ModuleDataPayload,
+): { itemId: string; value: Prisma.InputJsonValue }[] {
+  return Object.entries(data).map(([itemId, value]) => ({
+    itemId,
+    value: value as Prisma.InputJsonValue,
+  }));
+}

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { answersToRows, responsesToAnswers } from "./responses";
+import {
+  answersToRows,
+  moduleDataToRows,
+  responsesToAnswers,
+  responsesToModuleData,
+} from "./responses";
 
 describe("responses bridge", () => {
   it("rebuilds an answers map from response rows", () => {
@@ -30,5 +35,17 @@ describe("responses bridge", () => {
     const answers = { q01: "Often", q02: "Sometimes", q03: "Never" };
     const rebuilt = responsesToAnswers(answersToRows(answers));
     expect(rebuilt).toEqual(answers);
+  });
+
+  it("preserves structured JSON for exploration modules", () => {
+    const data = {
+      entries: [{ id: "a", lifeStage: "Adolescence", tags: ["School"] }],
+      notes: "optional",
+    };
+    const rows = moduleDataToRows(data).map((r) => ({
+      itemId: r.itemId,
+      value: r.value as import("@prisma/client").Prisma.JsonValue,
+    }));
+    expect(responsesToModuleData(rows)).toEqual(data);
   });
 });

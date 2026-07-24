@@ -10,12 +10,18 @@ export type {
   SessionStatus,
   UpdateSessionReviewInput,
 } from "./types";
+export type { ClientModuleRecord } from "./types";
 export {
   acceptSessionConsent,
+  addExplorationModules,
   createClient,
   createSession,
   extendSessionToken,
+  getClientEpisodeByToken,
   getClientForClinician,
+  getClientModulesForClinician,
+  getModuleByTokenAndKey,
+  getModuleForClinician,
   getSessionById,
   getSessionForClinician,
   getSessionByToken,
@@ -23,10 +29,13 @@ export {
   listModulesForEpisode,
   listSessionsForClinician,
   listSessionsForClient,
+  markEpisodeComplete,
   markSessionNotified,
   revokeSessionToken,
   saveSessionReport,
+  submitModule,
   submitSession,
+  updateModuleData,
   updateSessionAnswers,
   updateSessionReview,
 } from "./repository";
