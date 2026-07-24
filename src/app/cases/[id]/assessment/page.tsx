@@ -28,7 +28,7 @@ export default async function CaseAssessmentPage({ params }: PageProps) {
           <Link
             href={`/intake/${session.token}`}
             target="_blank"
-            className="mt-6 inline-block text-sm text-blue-600 hover:text-blue-800"
+            className="mt-6 inline-block text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
           >
             Open client intake link →
           </Link>

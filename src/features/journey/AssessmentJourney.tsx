@@ -84,7 +84,7 @@ export function AssessmentJourney({
         </p>
       ) : screenerSubmitted ? (
         <p
-          className="mb-6 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+          className="mb-6 rounded-md border border-[var(--border)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent-foreground)]"
           role="status"
         >
           Your initial assessment has been submitted. Continue with the remaining activities

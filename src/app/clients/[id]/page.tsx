@@ -43,7 +43,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
                 {s.status !== "DRAFT" && (
                   <Link
                     href={`/cases/${s.id}/assessment`}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-[var(--muted)] hover:text-[var(--foreground)]"
                   >
                     Review
                   </Link>

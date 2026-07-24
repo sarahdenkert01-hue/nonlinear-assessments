@@ -24,7 +24,7 @@ export function AssessmentPreview() {
             <button
               type="button"
               onClick={() => setStep("form")}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
             >
               ← Back to form
             </button>

@@ -1,40 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f6f9;
-  --foreground: #0f172a;
+  --background: #f4f4f9;
+  --foreground: #170f2a;
   --surface: #ffffff;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --muted: #64748b;
-  --accent: #ced9dd;
-  --accent-hover: #b8c8ce;
+  --border: #e6e2f0;
+  --border-strong: #cccbe1;
+  --muted: #74648b;
+  --accent: #cfcedd;
+  --accent-hover: #b8bbce;
   --accent-soft: #eef2f4;
-  --accent-foreground: #1e293b;
-  --accent-ring: rgba(206, 217, 221, 0.55);
-  --success: #166534;
-  --success-soft: #ecfdf3;
-  --warning: #b45309;
-  --warning-soft: #fffbeb;
-  --danger: #b91c1c;
-  --danger-soft: #fef2f2;
+  --accent-foreground: #251e3b;
+  --accent-ring: rgba(209, 206, 221, 0.55);
+  --success: #75d198;
+  --success-soft: #c6f6d9;
+  --warning: #ea6c6c;
+  --warning-soft: #ffdfd6;
+  --danger: #db5050;
+  --danger-soft: #ffcece;
   --radius: 0.625rem;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 1px 2px rgba(23, 15, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(23, 15, 42, 0.06);
 }
 
 html.dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --surface: #1e293b;
-  --border: #334155;
-  --border-strong: #475569;
-  --muted: #94a3b8;
-  --accent: #ced9dd;
-  --accent-hover: #dce5e8;
-  --accent-soft: #2a3438;
-  --accent-foreground: #0f172a;
-  --accent-ring: rgba(206, 217, 221, 0.35);
+  --background: #180f2a;
+  --foreground: #f6f1f9;
+  --surface: #271e3b;
+  --border: #403355;
+  --border-strong: #574769;
+  --muted: #a194b8;
+  --accent: #d1cedd;
+  --accent-hover: #dddce8;
+  --accent-soft: #2d2a38;
+  --accent-foreground: #170f2a;
+  --accent-ring: rgba(206, 208, 221, 0.35);
   --success-soft: #052e16;
   --warning-soft: #422006;
   --danger-soft: #450a0a;
@@ -61,7 +61,7 @@ body {
   display: block;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #334155;
+  color: #403355;
 }
 
 .ui-input {
@@ -112,7 +112,7 @@ body {
 
 .ui-btn-secondary {
   background: var(--surface);
-  color: #334155;
+  color: #403355;
   border: 1px solid var(--border);
 }
 
@@ -137,7 +137,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #9d94b8;
 }
 
 .ui-page-title {

@@ -7,10 +7,10 @@ type SessionBadgeVariant =
   | "revoked";
 
 const STYLES: Record<SessionBadgeVariant, string> = {
-  awaiting: "bg-slate-100 text-slate-700",
-  in_progress: "bg-sky-50 text-sky-800",
-  ready: "bg-blue-50 text-blue-800",
-  report: "bg-violet-50 text-violet-800",
+  awaiting: "bg-[var(--accent-soft)] text-[var(--muted)]",
+  in_progress: "bg-[var(--accent-soft)] text-[var(--accent-foreground)]",
+  ready: "bg-[var(--accent)] text-[var(--accent-foreground)]",
+  report: "bg-[var(--accent-soft)] text-[var(--foreground)]",
   reviewed: "bg-emerald-50 text-emerald-800",
   revoked: "bg-amber-50 text-amber-800",
 };

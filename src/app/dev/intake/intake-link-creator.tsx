@@ -46,7 +46,7 @@ export function IntakeLinkCreator() {
         type="button"
         onClick={handleCreate}
         disabled={loading}
-        className="mt-4 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="mt-4 ui-btn ui-btn-primary px-4 py-2.5 text-sm disabled:opacity-50"
       >
         {loading ? "Creating…" : "Create intake link"}
       </button>
@@ -55,13 +55,13 @@ export function IntakeLinkCreator() {
         <div className="mt-8 space-y-4 rounded-lg border border-gray-200 bg-white p-5 text-sm">
           <div>
             <p className="font-medium">Client intake</p>
-            <Link href={created.intakeUrl} className="mt-1 block break-all text-blue-600">
+            <Link href={created.intakeUrl} className="mt-1 block break-all text-[var(--muted)] hover:text-[var(--foreground)]">
               {created.intakeUrl}
             </Link>
           </div>
           <div>
             <p className="font-medium">Clinician review</p>
-            <Link href={created.reviewUrl} className="mt-1 block break-all text-blue-600">
+            <Link href={created.reviewUrl} className="mt-1 block break-all text-[var(--muted)] hover:text-[var(--foreground)]">
               {created.reviewUrl}
             </Link>
             <p className="mt-2 text-xs text-gray-500">Works after client submits.</p>
