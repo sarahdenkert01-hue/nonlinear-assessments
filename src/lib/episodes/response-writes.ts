@@ -62,7 +62,8 @@ export async function upsertModuleResponses(
   const upsertRows = input.rows.filter((r) => r.itemId && !clearItemIds.includes(r.itemId));
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(
+      async (tx) => {
       const locked = await tx.$queryRaw<
         Array<{ id: string; status: string; responseRevision: number | null }>
       >`
@@ -98,23 +99,30 @@ export async function upsertModuleResponses(
       const storedCountBefore = existing.length;
       const previousSnapshot = snapshotFromRows(existing);
 
-      for (const row of upsertRows) {
-        await tx.response.upsert({
-          where: {
-            moduleInstanceId_itemId: {
-              moduleInstanceId: input.moduleInstanceId,
-              itemId: row.itemId,
-            },
-          },
-          create: {
-            moduleInstanceId: input.moduleInstanceId,
-            itemId: row.itemId,
-            value: row.value,
-          },
-          update: {
-            value: row.value,
-          },
-        });
+      // Batch upserts to stay within pooler interactive-transaction limits.
+      const UPSERT_CHUNK = 10;
+      for (let i = 0; i < upsertRows.length; i += UPSERT_CHUNK) {
+        const chunk = upsertRows.slice(i, i + UPSERT_CHUNK);
+        await Promise.all(
+          chunk.map((row) =>
+            tx.response.upsert({
+              where: {
+                moduleInstanceId_itemId: {
+                  moduleInstanceId: input.moduleInstanceId,
+                  itemId: row.itemId,
+                },
+              },
+              create: {
+                moduleInstanceId: input.moduleInstanceId,
+                itemId: row.itemId,
+                value: row.value,
+              },
+              update: {
+                value: row.value,
+              },
+            }),
+          ),
+        );
       }
 
       if (clearItemIds.length > 0) {
@@ -160,7 +168,13 @@ export async function upsertModuleResponses(
         upsertedCount: upsertRows.length,
         clearedCount: clearItemIds.length,
       };
-    });
+      },
+      {
+        // Flushing a full screener (~49 upserts) must not hit the default 5s interactive timeout.
+        maxWait: 10_000,
+        timeout: 60_000,
+      },
+    );
 
     return result;
   } catch (err) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AssessmentForm, type AssessmentAnswers } from "@/features/assessments";
 import type { ClientModuleRecord } from "@/lib/modules";
@@ -12,6 +11,7 @@ import {
   INTAKE_SUBMIT_LABEL,
   INTAKE_SUBMIT_LABEL_LOADING,
 } from "@/content/intake-experience";
+import { formatLeaveUnsavedMessage } from "./answer-save-queue";
 import { SaveIndicator } from "./save-indicator";
 import { useAnswerSaveQueue } from "./use-answer-save-queue";
 import { useModuleHydration } from "./use-module-hydration";
@@ -24,6 +24,7 @@ export function ScreenerModule({
   module: ClientModuleRecord;
 }) {
   const router = useRouter();
+  const journeyHref = `/intake/${token}`;
   const { mod, setMod, hydrated, hydrateError } = useModuleHydration(
     token,
     initial.moduleKey,
@@ -32,6 +33,12 @@ export function ScreenerModule({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveDialog, setLeaveDialog] = useState<{
+    href: string;
+    message: string;
+    itemIds: string[];
+  } | null>(null);
   const readOnly = mod.status === "SUBMITTED" || mod.status === "COMPLETED";
   const answers = (mod.data ?? {}) as AssessmentAnswers;
 
@@ -50,6 +57,62 @@ export function ScreenerModule({
 
   const handleFocusConsumed = useCallback(() => setFocusItemId(null), []);
 
+  const navigateTo = useCallback(
+    (href: string) => {
+      setLeaveDialog(null);
+      router.push(href);
+    },
+    [router],
+  );
+
+  const tryLeave = useCallback(
+    async (href: string) => {
+      if (readOnly || !hydrated) {
+        navigateTo(href);
+        return;
+      }
+      setLeaving(true);
+      setSubmitError(null);
+      try {
+        const ok = await queue.flushForNavigation();
+        if (ok) {
+          navigateTo(href);
+          return;
+        }
+        const itemIds = queue.getUnsavedItemIds();
+        setLeaveDialog({
+          href,
+          itemIds,
+          message: formatLeaveUnsavedMessage(itemIds),
+        });
+      } finally {
+        setLeaving(false);
+      }
+    },
+    [hydrated, navigateTo, queue, readOnly],
+  );
+
+  const handleRetryAndLeave = async () => {
+    if (!leaveDialog) return;
+    setLeaving(true);
+    try {
+      queue.retrySave();
+      const ok = await queue.flushForNavigation();
+      if (ok) {
+        navigateTo(leaveDialog.href);
+        return;
+      }
+      const itemIds = queue.getUnsavedItemIds();
+      setLeaveDialog({
+        ...leaveDialog,
+        itemIds,
+        message: formatLeaveUnsavedMessage(itemIds),
+      });
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   const handleSubmit = async (next: AssessmentAnswers) => {
     if (!hydrated || readOnly) return;
     setSubmitting(true);
@@ -59,7 +122,8 @@ export function ScreenerModule({
       const flushed = await queue.flush();
       if (!flushed) {
         throw new Error(
-          queue.unsavedMessage ??
+          queue.leaveUnsavedMessage ??
+            queue.unsavedMessage ??
             "Please wait until all answers are saved before sharing.",
         );
       }
@@ -92,7 +156,6 @@ export function ScreenerModule({
             responseRevision: data.module.responseRevision,
           }));
         }
-        // Preserve local answers; ask user to retry so the queue can rebase revision via PATCH
         queue.onAnswersChange(queue.getLocalAnswers());
         throw new Error(
           data.error ??
@@ -102,7 +165,7 @@ export function ScreenerModule({
       if (!res.ok) {
         throw new Error(data.error ?? "Submit failed");
       }
-      router.push(`/intake/${token}`);
+      router.push(journeyHref);
       router.refresh();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not submit");
@@ -118,11 +181,20 @@ export function ScreenerModule({
     <div>
       <div className="intake-sticky-bar">
         <div className="intake-sticky-bar-inner">
-          <Link href={`/intake/${token}`} className="text-sm text-slate-600 hover:text-slate-900">
+          <button
+            type="button"
+            className="text-sm text-slate-600 hover:text-slate-900"
+            disabled={leaving}
+            onClick={() => void tryLeave(journeyHref)}
+          >
             ← Assessment Journey
-          </Link>
+          </button>
           <span className="text-sm text-slate-500">
-            {hydrated ? INTAKE_STICKY_HINT : "Loading saved answers…"}
+            {leaving
+              ? "Saving your answers…"
+              : hydrated
+                ? INTAKE_STICKY_HINT
+                : "Loading saved answers…"}
           </span>
           <SaveIndicator status={hydrated ? queue.saveStatus : "idle"} />
         </div>
@@ -153,6 +225,47 @@ export function ScreenerModule({
           )}
         </div>
       )}
+      {leaveDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-unsaved-title"
+        >
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
+            <h2 id="leave-unsaved-title" className="text-base font-semibold text-slate-900">
+              Answers not saved
+            </h2>
+            <p className="mt-2 text-sm text-amber-900">{leaveDialog.message}</p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button
+                type="button"
+                className="rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-60"
+                disabled={leaving}
+                onClick={() => void handleRetryAndLeave()}
+              >
+                {leaving ? "Saving…" : "Retry saving"}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+                disabled={leaving}
+                onClick={() => setLeaveDialog(null)}
+              >
+                Stay on page
+              </button>
+              <button
+                type="button"
+                className="rounded border border-amber-700/40 px-3 py-2 text-sm text-amber-950 hover:bg-amber-50"
+                disabled={leaving}
+                onClick={() => navigateTo(leaveDialog.href)}
+              >
+                Leave without saving
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {hydrated ? (
         <AssessmentForm
           key={`${mod.id}-hydrated`}
@@ -164,7 +277,7 @@ export function ScreenerModule({
           readOnly={readOnly}
           submitLabel={submitting ? INTAKE_SUBMIT_LABEL_LOADING : INTAKE_SUBMIT_LABEL}
           submitDisabled={
-            submitting || !queue.canSubmit || queue.hasUnsavedWork || queue.saveStatus === "saving"
+            submitting || leaving || !queue.canSubmit || queue.hasUnsavedWork || queue.saveStatus === "saving"
           }
           focusItemId={focusItemId}
           onFocusItemConsumed={handleFocusConsumed}

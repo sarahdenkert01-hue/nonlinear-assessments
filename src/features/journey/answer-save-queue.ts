@@ -312,6 +312,38 @@ export function formatUnsavedAnswersMessage(itemIds: readonly string[]): string 
   return `${count} ${answerWord} not been saved: ${joinHumanList(labels)}.`;
 }
 
+/** Leave-dialog copy: "Questions 12, 13, and 15 have not been saved." */
+export function formatLeaveUnsavedMessage(itemIds: readonly string[]): string {
+  const sorted = sortedUnique(itemIds);
+  if (sorted.length === 0) return "Some answers have not been saved.";
+  const numbers = sorted
+    .map((id) => globalQuestionNumber(id))
+    .filter((n): n is number => n != null)
+    .sort((a, b) => a - b);
+  if (numbers.length === sorted.length) {
+    if (numbers.length === 1) return `Question ${numbers[0]} has not been saved.`;
+    if (numbers.length === 2) {
+      return `Questions ${numbers[0]} and ${numbers[1]} have not been saved.`;
+    }
+    return `Questions ${numbers.slice(0, -1).join(", ")}, and ${numbers[numbers.length - 1]} have not been saved.`;
+  }
+  return formatUnsavedAnswersMessage(sorted);
+}
+
+/**
+ * Pure helper for leave/navigation decisions used by tests and UI.
+ */
+export function resolveLeaveAfterFlush(args: {
+  flushOk: boolean;
+  dirtyItemIds: readonly string[];
+}): { allowNavigation: boolean; message: string | null } {
+  if (args.flushOk) return { allowNavigation: true, message: null };
+  return {
+    allowNavigation: false,
+    message: formatLeaveUnsavedMessage(args.dirtyItemIds),
+  };
+}
+
 export function findQuestionLocation(itemId: string): {
   sectionIndex: number;
   questionIndex: number;

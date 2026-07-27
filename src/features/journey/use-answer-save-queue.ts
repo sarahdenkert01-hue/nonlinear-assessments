@@ -10,6 +10,7 @@ import {
   beginSave,
   canSubmit,
   createInitialQueueState,
+  formatLeaveUnsavedMessage,
   formatUnsavedAnswersMessage,
   hasUnsavedWork,
   noteLocalAnswers,
@@ -17,6 +18,10 @@ import {
   unsavedItemIdsForDisplay,
   type AnswerSaveQueueState,
 } from "./answer-save-queue";
+import {
+  installScreenerSaveDiagGlobals,
+  screenerSaveDiag,
+} from "./save-queue-diagnostics";
 
 type UseAnswerSaveQueueOptions = {
   token: string;
@@ -25,7 +30,6 @@ type UseAnswerSaveQueueOptions = {
   seedAnswers: AssessmentAnswers;
   seedRevision: number | null;
   debounceMs?: number;
-  /** Called when the server reports a new revision (metadata only — never replaces local answers). */
   onRevision?: (revision: number) => void;
 };
 
@@ -34,14 +38,18 @@ export type AnswerSaveQueueApi = {
   queueState: AnswerSaveQueueState;
   unsavedItemIds: string[];
   unsavedMessage: string | null;
+  leaveUnsavedMessage: string | null;
   canSubmit: boolean;
   hasUnsavedWork: boolean;
   onAnswersChange: (next: AssessmentAnswers) => void;
   retrySave: () => void;
   /** Flush pending saves; resolves true only when clean and not in error. */
   flush: () => Promise<boolean>;
+  /** Cancel debounce and ensure latest local map is queued, then flush. */
+  flushForNavigation: () => Promise<boolean>;
   getLocalAnswers: () => AssessmentAnswers;
   getRevision: () => number | null;
+  getUnsavedItemIds: () => string[];
 };
 
 export function useAnswerSaveQueue({
@@ -64,6 +72,8 @@ export function useAnswerSaveQueue({
   const activePumpRef = useRef<Promise<void> | null>(null);
   const seededRef = useRef(false);
   const onRevisionRef = useRef(onRevision);
+  const unmountedRef = useRef(false);
+  const allowSetStateRef = useRef(true);
 
   useEffect(() => {
     stateRef.current = queueState;
@@ -78,6 +88,10 @@ export function useAnswerSaveQueue({
   }, [onRevision]);
 
   useEffect(() => {
+    installScreenerSaveDiagGlobals();
+  }, []);
+
+  useEffect(() => {
     if (!enabled) {
       seededRef.current = false;
       return;
@@ -88,11 +102,21 @@ export function useAnswerSaveQueue({
     const next = createInitialQueueState(seedAnswers, seedRevision);
     stateRef.current = next;
     setQueueState(next);
+    screenerSaveDiag({
+      type: "queue_seeded",
+      itemIds: Object.keys(seedAnswers).sort(),
+      values: seedAnswers,
+      localCount: Object.keys(seedAnswers).length,
+      expectedRevision: seedRevision,
+      note: "initial lastSaved from hydration",
+    });
   }, [enabled, seedAnswers, seedRevision]);
 
   const setState = useCallback((next: AnswerSaveQueueState) => {
     stateRef.current = next;
-    setQueueState(next);
+    if (allowSetStateRef.current && !unmountedRef.current) {
+      setQueueState(next);
+    }
   }, []);
 
   const runPump = useCallback((): Promise<void> => {
@@ -117,6 +141,17 @@ export function useAnswerSaveQueue({
         setState(next);
         if (!request) break;
 
+        const snapshotItemIds = Object.keys(request.data).sort();
+        screenerSaveDiag({
+          type: "patch_start",
+          snapshotItemIds,
+          itemIds: snapshotItemIds,
+          values: request.data,
+          localCount: Object.keys(localRef.current).length,
+          dirtyItemIds: next.dirtyItemIds,
+          expectedRevision: request.expectedRevision,
+        });
+
         try {
           const res = await fetch(`/api/intake/${token}/modules/${moduleKey}`, {
             method: "PATCH",
@@ -133,12 +168,30 @@ export function useAnswerSaveQueue({
               typeof data.module?.responseRevision === "number"
                 ? data.module.responseRevision
                 : stateRef.current.revision;
+            screenerSaveDiag({
+              type: "patch_conflict",
+              status: 409,
+              snapshotItemIds,
+              expectedRevision: request.expectedRevision,
+              returnedRevision: rev,
+              serverStoredCount:
+                data.module?.data && typeof data.module.data === "object"
+                  ? Object.keys(data.module.data).length
+                  : null,
+            });
             setState(applySaveConflict(stateRef.current, rev, localRef.current));
             if (typeof rev === "number") onRevisionRef.current?.(rev);
             continue;
           }
 
           if (!res.ok) {
+            screenerSaveDiag({
+              type: "patch_failure",
+              status: res.status,
+              snapshotItemIds,
+              expectedRevision: request.expectedRevision,
+              note: typeof data.error === "string" ? data.error : "Save failed",
+            });
             setState(
               applySaveFailure(
                 stateRef.current,
@@ -153,9 +206,31 @@ export function useAnswerSaveQueue({
             typeof data.module?.responseRevision === "number"
               ? data.module.responseRevision
               : stateRef.current.revision;
-          setState(applySaveSuccess(stateRef.current, localRef.current, rev));
+          const serverStoredCount =
+            data.module?.data && typeof data.module.data === "object"
+              ? Object.keys(data.module.data as object).length
+              : null;
+          const after = applySaveSuccess(stateRef.current, localRef.current, rev);
+          screenerSaveDiag({
+            type: "patch_success",
+            status: res.status,
+            snapshotItemIds,
+            expectedRevision: request.expectedRevision,
+            returnedRevision: rev,
+            serverStoredCount,
+            dirtyItemIds: after.dirtyItemIds,
+            localCount: Object.keys(localRef.current).length,
+            note: `lastSavedCount=${Object.keys(after.lastSaved).length}`,
+          });
+          setState(after);
           if (typeof rev === "number") onRevisionRef.current?.(rev);
-        } catch {
+        } catch (err) {
+          screenerSaveDiag({
+            type: "patch_aborted_or_network",
+            snapshotItemIds,
+            expectedRevision: request.expectedRevision,
+            note: err instanceof Error ? err.name : "unknown",
+          });
           setState(
             applySaveFailure(stateRef.current, localRef.current, "Save failed"),
           );
@@ -180,11 +255,35 @@ export function useAnswerSaveQueue({
     }, debounceMs);
   }, [debounceMs, runPump]);
 
+  const promoteDebouncedWork = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+      screenerSaveDiag({
+        type: "debounce_promoted",
+        dirtyItemIds: stateRef.current.dirtyItemIds,
+        localCount: Object.keys(localRef.current).length,
+        itemIds: Object.keys(localRef.current).sort(),
+      });
+    }
+    // Ensure latest local map is reflected as dirty before pumping.
+    setState(noteLocalAnswers(stateRef.current, localRef.current));
+  }, [setState]);
+
   const onAnswersChange = useCallback(
     (next: AssessmentAnswers) => {
       if (!enabledRef.current) return;
       localRef.current = next;
-      setState(noteLocalAnswers(stateRef.current, next));
+      const noted = noteLocalAnswers(stateRef.current, next);
+      setState(noted);
+      screenerSaveDiag({
+        type: "local_answers",
+        itemIds: Object.keys(next).sort(),
+        values: next,
+        localCount: Object.keys(next).length,
+        dirtyItemIds: noted.dirtyItemIds,
+        inFlight: Boolean(noted.inFlight),
+      });
       schedulePump();
     },
     [schedulePump, setState],
@@ -192,20 +291,14 @@ export function useAnswerSaveQueue({
 
   const retrySave = useCallback(() => {
     if (!enabledRef.current) return;
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
+    promoteDebouncedWork();
     setState(prepareRetry(stateRef.current, localRef.current));
     void runPump();
-  }, [runPump, setState]);
+  }, [promoteDebouncedWork, runPump, setState]);
 
   const flush = useCallback(async () => {
     if (!enabledRef.current) return true;
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
+    promoteDebouncedWork();
     if (stateRef.current.status === "error") {
       setState(prepareRetry(stateRef.current, localRef.current));
     }
@@ -217,11 +310,40 @@ export function useAnswerSaveQueue({
     ) {
       await runPump();
     }
-    return canSubmit(stateRef.current);
-  }, [runPump, setState]);
+    const ok = canSubmit(stateRef.current);
+    screenerSaveDiag({
+      type: ok ? "flush_ok" : "flush_failed",
+      dirtyItemIds: stateRef.current.dirtyItemIds,
+      localCount: Object.keys(localRef.current).length,
+      inFlight: Boolean(stateRef.current.inFlight),
+      status: stateRef.current.status,
+    });
+    return ok;
+  }, [promoteDebouncedWork, runPump, setState]);
+
+  const flushForNavigation = useCallback(async () => {
+    screenerSaveDiag({
+      type: "flush_for_navigation",
+      dirtyItemIds: stateRef.current.dirtyItemIds,
+      localCount: Object.keys(localRef.current).length,
+      inFlight: Boolean(stateRef.current.inFlight),
+    });
+    return flush();
+  }, [flush]);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const dirty = stateRef.current.dirtyItemIds.length > 0;
+      const inFlight = Boolean(stateRef.current.inFlight);
+      screenerSaveDiag({
+        type: "beforeunload",
+        dirty,
+        inFlight,
+        dirtyItemIds: stateRef.current.dirtyItemIds,
+        localCount: Object.keys(localRef.current).length,
+        itemIds: Object.keys(localRef.current).sort(),
+        note: hasUnsavedWork(stateRef.current) ? "will_prompt" : "no_prompt",
+      });
       if (!enabledRef.current) return;
       if (!hasUnsavedWork(stateRef.current)) return;
       event.preventDefault();
@@ -231,9 +353,34 @@ export function useAnswerSaveQueue({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
+  const promoteDebouncedWorkRef = useRef(promoteDebouncedWork);
+  const runPumpRef = useRef(runPump);
+  promoteDebouncedWorkRef.current = promoteDebouncedWork;
+  runPumpRef.current = runPump;
+
   useEffect(() => {
+    unmountedRef.current = false;
+    allowSetStateRef.current = true;
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Promote pending debounce into an immediate pump (best-effort).
+      // In-app navigation must await flushForNavigation() before unmounting.
+      promoteDebouncedWorkRef.current();
+      screenerSaveDiag({
+        type: "queue_unmount",
+        dirty: stateRef.current.dirtyItemIds.length > 0,
+        inFlight: Boolean(stateRef.current.inFlight),
+        dirtyItemIds: stateRef.current.dirtyItemIds,
+        localCount: Object.keys(localRef.current).length,
+        itemIds: Object.keys(localRef.current).sort(),
+        note: hasUnsavedWork(stateRef.current)
+          ? "best_effort_pump_after_promote"
+          : "clean_unmount",
+      });
+      if (hasUnsavedWork(stateRef.current) && enabledRef.current) {
+        allowSetStateRef.current = false;
+        void runPumpRef.current();
+      }
+      unmountedRef.current = true;
     };
   }, []);
 
@@ -247,17 +394,23 @@ export function useAnswerSaveQueue({
   const unsavedMessage =
     queueState.status === "error" ? formatUnsavedAnswersMessage(displayIds) : null;
 
+  const leaveUnsavedMessage =
+    displayIds.length > 0 ? formatLeaveUnsavedMessage(displayIds) : null;
+
   return {
     saveStatus: queueState.status === "idle" ? "idle" : queueState.status,
     queueState,
     unsavedItemIds: displayIds,
     unsavedMessage,
+    leaveUnsavedMessage,
     canSubmit: canSubmit(queueState),
     hasUnsavedWork: hasUnsavedWork(queueState),
     onAnswersChange,
     retrySave,
     flush,
+    flushForNavigation,
     getLocalAnswers: () => localRef.current,
     getRevision: () => stateRef.current.revision,
+    getUnsavedItemIds: () => unsavedItemIdsForDisplay(stateRef.current),
   };
 }

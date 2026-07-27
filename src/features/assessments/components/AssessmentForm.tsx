@@ -17,7 +17,15 @@ import {
 import { getMicroValidation } from "@/content/intake-validations";
 import { AGREEMENT_OPTIONS, FREQUENCY_OPTIONS, NOT_SURE_OPTION } from "../data/questions";
 import { buildSections, countAnsweredQuestions } from "../lib/scoring";
+import {
+  canAutoAdvanceAfterAnswer as canAutoAdvance,
+  commitAnswerToMap,
+  nextQuestionIndexAfterAdvance,
+  shouldIgnoreContinueWhileAutoAdvanceArmed,
+  shouldShowContinueCta,
+} from "../lib/single-question-nav";
 import type { AssessmentAnswers, AssessmentQuestion, AssessmentSection } from "../types";
+import { screenerSaveDiag } from "@/features/journey/save-queue-diagnostics";
 import "./assessment.css";
 
 export interface AssessmentFormProps {
@@ -268,7 +276,14 @@ export function AssessmentForm({
     initialQuestionIndex(sections, initialAnswers, sectionIndex, useChapterFlow),
   );
   const skipAnswersNotify = useRef(true);
+  const notifiedSyncRef = useRef(false);
+  const answersRef = useRef(answers);
+  const onAnswersChangeRef = useRef(onAnswersChange);
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoAdvanceArmedRef = useRef(false);
+
+  answersRef.current = answers;
+  onAnswersChangeRef.current = onAnswersChange;
 
   useEffect(() => {
     if (useChapterFlow && typeof window !== "undefined") {
@@ -281,11 +296,24 @@ export function AssessmentForm({
       skipAnswersNotify.current = false;
       return;
     }
+    if (notifiedSyncRef.current) {
+      notifiedSyncRef.current = false;
+      return;
+    }
     onAnswersChange?.(answers);
   }, [answers, onAnswersChange]);
 
+  const cancelAutoAdvance = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    autoAdvanceArmedRef.current = false;
+  };
+
   useEffect(() => {
     if (!focusItemId || !useChapterFlow) return;
+    cancelAutoAdvance();
     for (let si = 0; si < sections.length; si++) {
       const qi = sections[si]!.questions.findIndex((q) => q.id === focusItemId);
       if (qi < 0) continue;
@@ -300,7 +328,7 @@ export function AssessmentForm({
 
   useEffect(() => {
     return () => {
-      if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+      cancelAutoAdvance();
     };
   }, []);
 
@@ -336,28 +364,71 @@ export function AssessmentForm({
       ? getMicroValidation(sectionIndex, questionIndex, sections)
       : null;
 
-  /** Auto-advance only within the same section — never into a new section or confirm. */
-  const canAutoAdvanceAfterAnswer =
-    singleQuestionMode &&
-    !!currentQuestion &&
-    (currentQuestion.format === "frequency" || currentQuestion.format === "agreement") &&
-    questionIndex < questionsInSection - 1;
+  const autoAdvanceCtx = {
+    singleQuestionMode,
+    format: currentQuestion?.format,
+    questionIndex,
+    questionsInSection,
+  };
+  const willAutoAdvance = canAutoAdvance(autoAdvanceCtx);
+  const showPrimaryContinue = !singleQuestionMode || shouldShowContinueCta(autoAdvanceCtx);
+  const currentAnswerValue = currentQuestion
+    ? (answers[currentQuestion.id] ?? "").trim()
+    : "";
+  const currentQuestionAnswered = currentAnswerValue.length > 0;
+  const continueBlockedForUnanswered =
+    singleQuestionMode && !!currentQuestion && !currentQuestionAnswered;
 
-  const setAnswer = (id: string, value: string) => {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
+  /** Commit answer map synchronously to React state + save queue (no wait for effect). */
+  const commitAnswer = (id: string, value: string): AssessmentAnswers => {
+    const next = commitAnswerToMap(answersRef.current, id, value);
+    answersRef.current = next;
+    notifiedSyncRef.current = true;
+    setAnswers(next);
+    onAnswersChangeRef.current?.(next);
+    return next;
   };
 
   const handleScaleAnswer = (id: string, value: string) => {
-    setAnswer(id, value);
-    if (!canAutoAdvanceAfterAnswer || readOnly) return;
-    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+    const next = commitAnswer(id, value);
+    screenerSaveDiag({
+      type: "scale_answer",
+      questionId: id,
+      itemIds: [id],
+      values: { [id]: value },
+      localCount: Object.keys(next).length,
+      sectionIndex,
+      questionIndex,
+      note: willAutoAdvance ? "will_auto_advance" : "no_auto_advance_boundary",
+    });
+    if (!willAutoAdvance || readOnly) return;
+
+    cancelAutoAdvance();
+    autoAdvanceArmedRef.current = true;
     autoAdvanceTimerRef.current = setTimeout(() => {
       autoAdvanceTimerRef.current = null;
-      setQuestionIndex((i) => Math.min(i + 1, Math.max(questionsInSection - 1, 0)));
+      if (!autoAdvanceArmedRef.current) return;
+      autoAdvanceArmedRef.current = false;
+      setQuestionIndex((i) => {
+        const nextIdx = nextQuestionIndexAfterAdvance(i, questionsInSection);
+        screenerSaveDiag({
+          type: "auto_advance",
+          questionId: id,
+          sectionIndex,
+          questionIndex: i,
+          note: `to_question_index_${nextIdx}`,
+        });
+        return nextIdx;
+      });
     }, autoAdvanceDelayMs);
   };
 
+  const setAnswer = (id: string, value: string) => {
+    commitAnswer(id, value);
+  };
+
   const advanceFromChapterEnd = () => {
+    cancelAutoAdvance();
     if (sectionIndex >= sections.length - 1) {
       setSectionPhase("confirm");
       return;
@@ -365,9 +436,9 @@ export function AssessmentForm({
     const nextIndex = sectionIndex + 1;
     setSectionIndex(nextIndex);
     const nextSection = sections[nextIndex];
-    if (nextSection && sectionHasAnswers(nextSection, answers)) {
+    if (nextSection && sectionHasAnswers(nextSection, answersRef.current)) {
       setSectionPhase("questions");
-      setQuestionIndex(findFirstUnansweredQuestionIndex(nextSection, answers));
+      setQuestionIndex(findFirstUnansweredQuestionIndex(nextSection, answersRef.current));
     } else {
       setSectionPhase("intro");
       setQuestionIndex(0);
@@ -375,15 +446,16 @@ export function AssessmentForm({
   };
 
   const goToSection = (index: number) => {
+    cancelAutoAdvance();
     setSectionIndex(index);
     if (!useChapterFlow) {
       setQuestionIndex(0);
       return;
     }
     const section = sections[index];
-    if (section && sectionHasAnswers(section, answers)) {
+    if (section && sectionHasAnswers(section, answersRef.current)) {
       setSectionPhase("questions");
-      setQuestionIndex(findFirstUnansweredQuestionIndex(section, answers));
+      setQuestionIndex(findFirstUnansweredQuestionIndex(section, answersRef.current));
     } else {
       setSectionPhase("intro");
       setQuestionIndex(0);
@@ -391,12 +463,47 @@ export function AssessmentForm({
   };
 
   const goNext = () => {
+    screenerSaveDiag({
+      type: "continue_click",
+      sectionIndex,
+      questionIndex,
+      questionId: currentQuestion?.id ?? null,
+      note: `${sectionPhase}:${currentQuestion?.id ?? "none"}`,
+    });
+
+    if (shouldIgnoreContinueWhileAutoAdvanceArmed(autoAdvanceArmedRef.current)) {
+      screenerSaveDiag({
+        type: "continue_ignored_while_armed",
+        sectionIndex,
+        questionIndex,
+        questionId: currentQuestion?.id ?? null,
+      });
+      return;
+    }
+
+    // Never skip an unanswered question via Continue.
+    if (
+      singleQuestionMode &&
+      currentQuestion &&
+      !(answersRef.current[currentQuestion.id] ?? "").trim()
+    ) {
+      screenerSaveDiag({
+        type: "continue_blocked_unanswered",
+        sectionIndex,
+        questionIndex,
+        questionId: currentQuestion.id,
+      });
+      return;
+    }
+
+    cancelAutoAdvance();
+
     if (!useChapterFlow) {
       if (sectionIndex < sections.length - 1) {
         setSectionIndex((i) => i + 1);
         return;
       }
-      if (!readOnly) onComplete?.(answers);
+      if (!readOnly) onComplete?.(answersRef.current);
       return;
     }
 
@@ -416,11 +523,12 @@ export function AssessmentForm({
     }
 
     if (sectionPhase === "confirm") {
-      onComplete?.(answers);
+      onComplete?.(answersRef.current);
     }
   };
 
   const goPrev = () => {
+    cancelAutoAdvance();
     if (!useChapterFlow) {
       if (sectionIndex > 0) setSectionIndex((i) => i - 1);
       return;
@@ -660,19 +768,22 @@ export function AssessmentForm({
                     {SUBMIT_CONFIRM_BACK}
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="assessment-btn assessment-btn--primary"
-                  onClick={goNext}
-                  disabled={
-                    (useChapterFlow && sectionPhase === "confirm" && submitDisabled) ||
-                    (!useChapterFlow &&
-                      sectionIndex >= sections.length - 1 &&
-                      submitDisabled)
-                  }
-                >
-                  {primaryLabel}
-                </button>
+                {showPrimaryContinue && (
+                  <button
+                    type="button"
+                    className="assessment-btn assessment-btn--primary"
+                    onClick={goNext}
+                    disabled={
+                      continueBlockedForUnanswered ||
+                      (useChapterFlow && sectionPhase === "confirm" && submitDisabled) ||
+                      (!useChapterFlow &&
+                        sectionIndex >= sections.length - 1 &&
+                        submitDisabled)
+                    }
+                  >
+                    {primaryLabel}
+                  </button>
+                )}
               </div>
             </div>
           )}
