@@ -35,6 +35,13 @@ export interface AssessmentFormProps {
   submitLabel?: string;
   /** Chapter intro + completion acknowledgments (client exploration flow). */
   explorationFlow?: boolean;
+  /** Disable the final confirm/submit CTA (e.g. while saves are pending). */
+  submitDisabled?: boolean;
+  /** Jump to this question id (section + index), then call onFocusItemConsumed. */
+  focusItemId?: string | null;
+  onFocusItemConsumed?: () => void;
+  /** Delay before auto-advancing after a scale answer (ms). */
+  autoAdvanceDelayMs?: number;
 }
 
 type SectionPhase = "intro" | "questions" | "confirm";
@@ -241,6 +248,10 @@ export function AssessmentForm({
   readOnly = false,
   submitLabel = "Submit",
   explorationFlow = true,
+  submitDisabled = false,
+  focusItemId = null,
+  onFocusItemConsumed,
+  autoAdvanceDelayMs = 250,
 }: AssessmentFormProps) {
   const sections = useMemo(() => buildSections(), []);
   const totalQuestions = useMemo(() => countAllQuestions(sections), [sections]);
@@ -257,6 +268,7 @@ export function AssessmentForm({
     initialQuestionIndex(sections, initialAnswers, sectionIndex, useChapterFlow),
   );
   const skipAnswersNotify = useRef(true);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (useChapterFlow && typeof window !== "undefined") {
@@ -271,6 +283,26 @@ export function AssessmentForm({
     }
     onAnswersChange?.(answers);
   }, [answers, onAnswersChange]);
+
+  useEffect(() => {
+    if (!focusItemId || !useChapterFlow) return;
+    for (let si = 0; si < sections.length; si++) {
+      const qi = sections[si]!.questions.findIndex((q) => q.id === focusItemId);
+      if (qi < 0) continue;
+      setSectionIndex(si);
+      setSectionPhase("questions");
+      setQuestionIndex(qi);
+      onFocusItemConsumed?.();
+      return;
+    }
+    onFocusItemConsumed?.();
+  }, [focusItemId, useChapterFlow, sections, onFocusItemConsumed]);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+    };
+  }, []);
 
   const answeredCount = countAnsweredQuestions(answers);
   const answerProgress =
@@ -304,8 +336,25 @@ export function AssessmentForm({
       ? getMicroValidation(sectionIndex, questionIndex, sections)
       : null;
 
+  /** Auto-advance only within the same section — never into a new section or confirm. */
+  const canAutoAdvanceAfterAnswer =
+    singleQuestionMode &&
+    !!currentQuestion &&
+    (currentQuestion.format === "frequency" || currentQuestion.format === "agreement") &&
+    questionIndex < questionsInSection - 1;
+
   const setAnswer = (id: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleScaleAnswer = (id: string, value: string) => {
+    setAnswer(id, value);
+    if (!canAutoAdvanceAfterAnswer || readOnly) return;
+    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+    autoAdvanceTimerRef.current = setTimeout(() => {
+      autoAdvanceTimerRef.current = null;
+      setQuestionIndex((i) => Math.min(i + 1, Math.max(questionsInSection - 1, 0)));
+    }, autoAdvanceDelayMs);
   };
 
   const advanceFromChapterEnd = () => {
@@ -564,7 +613,11 @@ export function AssessmentForm({
                   key={currentQuestion.id}
                   question={currentQuestion}
                   value={answers[currentQuestion.id]}
-                  onChange={(v) => setAnswer(currentQuestion.id, v)}
+                  onChange={(v) =>
+                    currentQuestion.format === "open"
+                      ? setAnswer(currentQuestion.id, v)
+                      : handleScaleAnswer(currentQuestion.id, v)
+                  }
                   index={questionIndex}
                   readOnly={readOnly}
                   focusMode
@@ -611,6 +664,12 @@ export function AssessmentForm({
                   type="button"
                   className="assessment-btn assessment-btn--primary"
                   onClick={goNext}
+                  disabled={
+                    (useChapterFlow && sectionPhase === "confirm" && submitDisabled) ||
+                    (!useChapterFlow &&
+                      sectionIndex >= sections.length - 1 &&
+                      submitDisabled)
+                  }
                 >
                   {primaryLabel}
                 </button>

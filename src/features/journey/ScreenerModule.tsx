@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AssessmentForm, type AssessmentAnswers } from "@/features/assessments";
-import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
 import type { ClientModuleRecord } from "@/lib/modules";
 import {
   INTAKE_FORM_SUBTITLE,
@@ -13,7 +12,8 @@ import {
   INTAKE_SUBMIT_LABEL,
   INTAKE_SUBMIT_LABEL_LOADING,
 } from "@/content/intake-experience";
-import { SaveIndicator, type SaveStatus } from "./save-indicator";
+import { SaveIndicator } from "./save-indicator";
+import { useAnswerSaveQueue } from "./use-answer-save-queue";
 import { useModuleHydration } from "./use-module-hydration";
 
 export function ScreenerModule({
@@ -29,81 +29,74 @@ export function ScreenerModule({
     initial.moduleKey,
     initial,
   );
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const revisionRef = useRef(mod.responseRevision);
+  const [focusItemId, setFocusItemId] = useState<string | null>(null);
   const readOnly = mod.status === "SUBMITTED" || mod.status === "COMPLETED";
   const answers = (mod.data ?? {}) as AssessmentAnswers;
 
-  useEffect(() => {
-    revisionRef.current = mod.responseRevision;
-  }, [mod.responseRevision]);
-
-  const saveAnswers = useDebouncedCallback(async (next: AssessmentAnswers) => {
-    if (readOnly || !hydrated) return;
-    setSaveStatus("saving");
-    try {
-      const res = await fetch(`/api/intake/${token}/modules/${mod.moduleKey}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: next,
-          expectedRevision: revisionRef.current,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 409 && data.code === "conflict" && data.module) {
-        setMod(data.module);
-        setSaveStatus("error");
-        setSubmitError(
-          data.error ?? "Saved answers changed in another tab. Reloaded your latest saved copy.",
-        );
-        return;
-      }
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
-      setMod(data.module);
-      setSaveStatus("saved");
-      setSubmitError(null);
-    } catch {
-      setSaveStatus("error");
-    }
-  }, 800);
-
-  const handleAnswersChange = useCallback(
-    (next: AssessmentAnswers) => {
-      if (!hydrated || readOnly) return;
-      setSaveStatus("idle");
-      saveAnswers(next);
+  const queue = useAnswerSaveQueue({
+    token,
+    moduleKey: mod.moduleKey,
+    enabled: hydrated && !readOnly,
+    seedAnswers: answers,
+    seedRevision: mod.responseRevision,
+    onRevision: (revision) => {
+      setMod((prev) =>
+        prev.responseRevision === revision ? prev : { ...prev, responseRevision: revision },
+      );
     },
-    [hydrated, readOnly, saveAnswers],
-  );
+  });
+
+  const handleFocusConsumed = useCallback(() => setFocusItemId(null), []);
 
   const handleSubmit = async (next: AssessmentAnswers) => {
     if (!hydrated || readOnly) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
+      queue.onAnswersChange(next);
+      const flushed = await queue.flush();
+      if (!flushed) {
+        throw new Error(
+          queue.unsavedMessage ??
+            "Please wait until all answers are saved before sharing.",
+        );
+      }
+
       const res = await fetch(`/api/intake/${token}/modules/${mod.moduleKey}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: next,
-          expectedRevision: revisionRef.current,
+          data: queue.getLocalAnswers(),
+          expectedRevision: queue.getRevision(),
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 422 && data.code === "incomplete") {
-        if (data.module) setMod(data.module);
+        if (data.module?.responseRevision != null) {
+          setMod((prev) => ({
+            ...prev,
+            responseRevision: data.module.responseRevision,
+          }));
+        }
         throw new Error(
           data.error ??
             "Please answer all scored questions before sharing. Your saved answers were kept.",
         );
       }
-      if (res.status === 409 && data.code === "conflict" && data.module) {
-        setMod(data.module);
+      if (res.status === 409 && data.code === "conflict") {
+        if (typeof data.module?.responseRevision === "number") {
+          setMod((prev) => ({
+            ...prev,
+            responseRevision: data.module.responseRevision,
+          }));
+        }
+        // Preserve local answers; ask user to retry so the queue can rebase revision via PATCH
+        queue.onAnswersChange(queue.getLocalAnswers());
         throw new Error(
-          data.error ?? "Saved answers changed in another tab. Reloaded your latest saved copy.",
+          data.error ??
+            "Saved answers changed in another tab. Retry saving, then share again.",
         );
       }
       if (!res.ok) {
@@ -118,6 +111,9 @@ export function ScreenerModule({
     }
   };
 
+  const showUnsavedBanner = Boolean(queue.unsavedMessage);
+  const firstUnsaved = queue.unsavedItemIds[0] ?? null;
+
   return (
     <div>
       <div className="intake-sticky-bar">
@@ -128,24 +124,50 @@ export function ScreenerModule({
           <span className="text-sm text-slate-500">
             {hydrated ? INTAKE_STICKY_HINT : "Loading saved answers…"}
           </span>
-          <SaveIndicator status={hydrated ? saveStatus : "idle"} />
+          <SaveIndicator status={hydrated ? queue.saveStatus : "idle"} />
         </div>
       </div>
-      {(hydrateError || submitError) && (
-        <p className="mx-auto max-w-2xl px-6 pt-4 text-sm text-amber-800">
-          {submitError ?? hydrateError}
-        </p>
+      {(hydrateError || submitError || showUnsavedBanner) && (
+        <div className="mx-auto max-w-2xl space-y-2 px-6 pt-4 text-sm text-amber-800">
+          {hydrateError && <p>{hydrateError}</p>}
+          {submitError && <p>{submitError}</p>}
+          {showUnsavedBanner && (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="text-left underline decoration-amber-700/50 underline-offset-2 hover:decoration-amber-800"
+                onClick={() => {
+                  if (firstUnsaved) setFocusItemId(firstUnsaved);
+                }}
+              >
+                {queue.unsavedMessage}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-amber-700/40 bg-amber-50 px-2.5 py-1 text-amber-950 hover:bg-amber-100"
+                onClick={() => queue.retrySave()}
+              >
+                Retry saving
+              </button>
+            </div>
+          )}
+        </div>
       )}
       {hydrated ? (
         <AssessmentForm
           key={`${mod.id}-hydrated`}
           initialAnswers={answers}
-          onAnswersChange={readOnly ? undefined : handleAnswersChange}
+          onAnswersChange={readOnly ? undefined : queue.onAnswersChange}
           onComplete={readOnly ? undefined : handleSubmit}
           title={INTAKE_FORM_TITLE}
           subtitle={INTAKE_FORM_SUBTITLE}
           readOnly={readOnly}
           submitLabel={submitting ? INTAKE_SUBMIT_LABEL_LOADING : INTAKE_SUBMIT_LABEL}
+          submitDisabled={
+            submitting || !queue.canSubmit || queue.hasUnsavedWork || queue.saveStatus === "saving"
+          }
+          focusItemId={focusItemId}
+          onFocusItemConsumed={handleFocusConsumed}
         />
       ) : (
         <p className="mx-auto max-w-2xl px-6 py-16 text-sm text-slate-600">
