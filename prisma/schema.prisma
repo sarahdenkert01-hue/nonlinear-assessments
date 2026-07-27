@@ -129,15 +129,42 @@ model ModuleInstance {
   revokedAt         DateTime?
   consentAcceptedAt DateTime?
   submittedAt       DateTime?
+  /**
+   * Monotonic revision for stale-tab concurrency checks.
+   * Null on legacy rows — treated as 0 by writers.
+   */
+  responseRevision  Int?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   responses         Response[]
+  responseRevisions ResponseRevision[]
   findings          Finding[]
   events            AuditEvent[]
 
   @@index([episodeId])
   @@index([moduleKey])
   @@index([status])
+}
+
+/**
+ * Recoverable snapshot of module answers before a write.
+ * Additive history only — never used as the live source of truth.
+ */
+model ResponseRevision {
+  id               String         @id @default(cuid())
+  moduleInstanceId String
+  moduleInstance   ModuleInstance @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+  /** Revision number after the write that produced this history row. */
+  revision         Int
+  operation        String
+  itemIds          String[]       @default([])
+  clearItemIds     String[]       @default([])
+  /** Full itemId -> value map before the write. */
+  previousSnapshot Json
+  createdAt        DateTime       @default(now())
+
+  @@index([moduleInstanceId, revision])
+  @@index([createdAt])
 }
 
 // One answered item within a module. Normalized so findings can link to specific evidence later.

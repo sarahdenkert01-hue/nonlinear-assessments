@@ -20,6 +20,11 @@ describe("responses bridge", () => {
     expect(responsesToAnswers(rows)).toEqual({ q01: "3" });
   });
 
+  it("trims string answers used by the findings scorer", () => {
+    const rows = [{ itemId: "q01", value: "  Often  " }];
+    expect(responsesToAnswers(rows)).toEqual({ q01: "Often" });
+  });
+
   it("returns an empty map for no rows", () => {
     expect(responsesToAnswers([])).toEqual({});
   });

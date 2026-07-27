@@ -11,6 +11,21 @@ export type {
   UpdateSessionReviewInput,
 } from "./types";
 export type { ClientModuleRecord } from "./types";
+export type {
+  EpisodeResponseReview,
+  ModuleResponseReview,
+  ResponseReviewItem,
+} from "./response-review";
+export type { ModuleWriteMeta, ModuleWriteOptions, ModuleWriteResult } from "./repository";
+export {
+  missingRequiredScreenerItems,
+  mergeAnswerMaps,
+  requiredScreenerItemIds,
+} from "./screener-required";
+export {
+  normalizeRevision,
+  snapshotFromRows,
+} from "./response-writes";
 export {
   acceptSessionConsent,
   addExplorationModules,
@@ -20,6 +35,7 @@ export {
   getClientEpisodeByToken,
   getClientForClinician,
   getClientModulesForClinician,
+  getEpisodeResponseReviewForClinician,
   getModuleByTokenAndKey,
   getModuleForClinician,
   getSessionById,

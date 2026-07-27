@@ -28,6 +28,10 @@ interface FindingsReviewProps {
   onReportGenerated: (report: AssessmentReportResult) => void;
   onFinalizeReport: () => void;
   onExportReport: () => void;
+  /** Hide embedded report UI when the parent hosts a dedicated Report tab. */
+  showReportSection?: boolean;
+  /** Helps explain empty findings when client answers exist but none flagged. */
+  screenerAnsweredCount?: number;
 }
 
 const CONFIDENCE_LEVELS: { value: Confidence | null; label: string; title: string }[] = [
@@ -114,6 +118,8 @@ export function FindingsReview({
   onReportGenerated,
   onFinalizeReport,
   onExportReport,
+  showReportSection = true,
+  screenerAnsweredCount = 0,
 }: FindingsReviewProps) {
   const [findings, setFindings] = useState<FindingRecord[]>(() =>
     orderFindings(initialFindings),
@@ -511,8 +517,21 @@ export function FindingsReview({
 
           {totalCount === 0 && (
             <div className="fr-empty">
-              No findings were proposed from the responses. You can add clinically
-              relevant findings manually below.
+              {screenerAnsweredCount > 0 ? (
+                <>
+                  No findings were proposed from the responses. {screenerAnsweredCount}{" "}
+                  screener answer{screenerAnsweredCount === 1 ? "" : "s"}{" "}
+                  {screenerAnsweredCount === 1 ? "was" : "were"} loaded, but none met the
+                  algorithmic flag thresholds. Review the Responses tab for the full
+                  answers, or add clinically relevant findings manually below.
+                </>
+              ) : (
+                <>
+                  No findings were proposed from the responses. No screener answers were
+                  available for scoring. Check the Responses tab, or add clinically
+                  relevant findings manually below.
+                </>
+              )}
             </div>
           )}
 
@@ -617,18 +636,20 @@ export function FindingsReview({
             />
           </div>
 
-          <ReportPanel
-            canGenerate={includedCount > 0}
-            sessionId={sessionId}
-            initialReportDraft={reportDraft}
-            reportGeneratedAt={reportGeneratedAt}
-            reportFinalized={reportFinalized}
-            onGenerate={handleGenerate}
-            onReportDraftChange={onReportDraftChange}
-            onReportGenerated={onReportGenerated}
-            onFinalizeReport={onFinalizeReport}
-            onExportReport={onExportReport}
-          />
+          {showReportSection && (
+            <ReportPanel
+              canGenerate={includedCount > 0}
+              sessionId={sessionId}
+              initialReportDraft={reportDraft}
+              reportGeneratedAt={reportGeneratedAt}
+              reportFinalized={reportFinalized}
+              onGenerate={handleGenerate}
+              onReportDraftChange={onReportDraftChange}
+              onReportGenerated={onReportGenerated}
+              onFinalizeReport={onFinalizeReport}
+              onExportReport={onExportReport}
+            />
+          )}
         </div>
       </div>
     </div>

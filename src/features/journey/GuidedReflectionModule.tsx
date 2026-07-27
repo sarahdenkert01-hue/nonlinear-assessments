@@ -11,6 +11,7 @@ import {
   type GuidedReflectionData,
 } from "@/lib/modules";
 import { SaveIndicator, type SaveStatus } from "./save-indicator";
+import { useModuleHydration } from "./use-module-hydration";
 
 export function GuidedReflectionModule({
   token,
@@ -20,7 +21,11 @@ export function GuidedReflectionModule({
   module: ClientModuleRecord;
 }) {
   const router = useRouter();
-  const [mod, setMod] = useState(initial);
+  const { mod, setMod, hydrated, hydrateError } = useModuleHydration(
+    token,
+    initial.moduleKey,
+    initial,
+  );
   const [data, setData] = useState<GuidedReflectionData>(() =>
     parseGuidedReflectionData(initial.data),
   );
@@ -28,7 +33,19 @@ export function GuidedReflectionModule({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const dirtyRef = useRef(false);
+  const revisionRef = useRef(mod.responseRevision);
+  const hydratedOnceRef = useRef(false);
   const readOnly = mod.status === "SUBMITTED" || mod.status === "COMPLETED";
+
+  useEffect(() => {
+    revisionRef.current = mod.responseRevision;
+  }, [mod.responseRevision]);
+
+  useEffect(() => {
+    if (!hydrated || hydratedOnceRef.current || dirtyRef.current) return;
+    hydratedOnceRef.current = true;
+    setData(parseGuidedReflectionData(mod.data));
+  }, [hydrated, mod.data]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -42,19 +59,32 @@ export function GuidedReflectionModule({
   }, [saveStatus]);
 
   const persist = useDebouncedCallback(async (next: GuidedReflectionData) => {
-    if (readOnly) return;
+    if (readOnly || !hydrated) return;
     setSaveStatus("saving");
     try {
       const res = await fetch(`/api/intake/${token}/modules/${mod.moduleKey}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: next }),
+        body: JSON.stringify({
+          data: next,
+          expectedRevision: revisionRef.current,
+        }),
       });
-      if (!res.ok) throw new Error("Save failed");
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409 && json.code === "conflict" && json.module) {
+        setMod(json.module);
+        setData(parseGuidedReflectionData(json.module.data));
+        setSaveStatus("error");
+        setSubmitError(
+          json.error ?? "Saved answers changed in another tab. Reloaded your latest saved copy.",
+        );
+        return;
+      }
+      if (!res.ok) throw new Error(json.error ?? "Save failed");
       setMod(json.module);
       dirtyRef.current = false;
       setSaveStatus("saved");
+      setSubmitError(null);
     } catch {
       setSaveStatus("error");
     }
@@ -62,6 +92,7 @@ export function GuidedReflectionModule({
 
   const updateField = useCallback(
     (key: keyof GuidedReflectionData, value: string) => {
+      if (!hydrated || readOnly) return;
       setData((prev) => {
         const next = { ...prev, [key]: value };
         dirtyRef.current = true;
@@ -70,20 +101,31 @@ export function GuidedReflectionModule({
         return next;
       });
     },
-    [persist],
+    [hydrated, persist, readOnly],
   );
 
   const handleSubmit = async () => {
+    if (!hydrated || readOnly) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       const res = await fetch(`/api/intake/${token}/modules/${mod.moduleKey}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({
+          data,
+          expectedRevision: revisionRef.current,
+        }),
       });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409 && json.code === "conflict" && json.module) {
+        setMod(json.module);
+        setData(parseGuidedReflectionData(json.module.data));
+        throw new Error(
+          json.error ?? "Saved answers changed in another tab. Reloaded your latest saved copy.",
+        );
+      }
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? "Submit failed");
       }
       dirtyRef.current = false;
@@ -96,6 +138,14 @@ export function GuidedReflectionModule({
     }
   };
 
+  if (!hydrated) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-slate-600">
+        Loading your saved answers…
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -104,6 +154,10 @@ export function GuidedReflectionModule({
         </Link>
         <SaveIndicator status={saveStatus} />
       </div>
+
+      {(hydrateError || submitError) && (
+        <p className="mb-4 text-sm text-amber-800">{submitError ?? hydrateError}</p>
+      )}
 
       <header className="mb-8">
         <h1 className="ui-page-title">{mod.title}</h1>
@@ -149,8 +203,6 @@ export function GuidedReflectionModule({
           </Link>
         </div>
       )}
-
-      {submitError && <p className="mt-4 text-sm text-red-600">{submitError}</p>}
     </div>
   );
 }

@@ -19,6 +19,19 @@ import {
   responsesToModuleData,
   type ModuleDataPayload,
 } from "./responses";
+import {
+  normalizeRevision,
+  upsertModuleResponses,
+  type ResponseWriteOperation,
+} from "./response-writes";
+import {
+  buildEpisodeResponseReview,
+  type EpisodeResponseReview,
+} from "./response-review";
+import {
+  mergeAnswerMaps,
+  missingRequiredScreenerItems,
+} from "./screener-required";
 import type {
   ClientRecord,
   CreateClientInput,
@@ -28,6 +41,32 @@ import type {
   ModuleSummary,
   UpdateSessionReviewInput,
 } from "./types";
+
+export type ModuleWriteMeta = {
+  operation: ResponseWriteOperation;
+  moduleKey: string;
+  moduleInstanceId: string;
+  incomingAnswerCount: number;
+  storedCountBefore: number;
+  storedCountAfter: number;
+  revision: number;
+};
+
+export type ModuleWriteResult =
+  | { ok: true; module: ClientModuleRecord; meta: ModuleWriteMeta }
+  | {
+      ok: false;
+      code:
+        | "not_found"
+        | "locked"
+        | "conflict"
+        | "incomplete"
+        | "validation";
+      message: string;
+      missingItemIds?: string[];
+      currentRevision?: number;
+      module?: ClientModuleRecord;
+    };
 
 const DEFAULT_TOKEN_EXPIRY_DAYS = 30;
 
@@ -130,6 +169,7 @@ function moduleToClientRecord(m: ModuleRow): ClientModuleRecord {
     status: m.status,
     data,
     submittedAt: toIso(m.submittedAt),
+    responseRevision: normalizeRevision(m.responseRevision),
     displayOrder: def?.displayOrder ?? 99,
   };
 }
@@ -226,83 +266,24 @@ function buildFilterWhere(
   return where;
 }
 
-async function replaceModuleResponses(
-  moduleInstanceId: string,
-  answers: AssessmentAnswers,
-): Promise<boolean> {
-  const rows = answersToRows(answers);
-  return writeModuleResponsesLocked(moduleInstanceId, rows, { status: "IN_PROGRESS" });
-}
-
-async function replaceModuleData(
-  moduleInstanceId: string,
-  data: ModuleDataPayload,
-): Promise<boolean> {
-  const rows = moduleDataToRows(data);
-  return writeModuleResponsesLocked(moduleInstanceId, rows, { status: "IN_PROGRESS" });
-}
-
-async function submitModuleResponsesLocked(
-  moduleInstanceId: string,
-  rows: { itemId: string; value: Prisma.InputJsonValue }[],
-): Promise<boolean> {
-  return writeModuleResponsesLocked(moduleInstanceId, rows, {
-    status: "SUBMITTED",
-    submittedAt: new Date(),
+async function writeModuleAnswers(opts: {
+  moduleInstanceId: string;
+  rows: { itemId: string; value: Prisma.InputJsonValue }[];
+  clearItemIds?: string[];
+  expectedRevision?: number | null;
+  operation: ResponseWriteOperation;
+  nextStatus: "IN_PROGRESS" | "SUBMITTED";
+  submittedAt?: Date;
+}) {
+  return upsertModuleResponses({
+    moduleInstanceId: opts.moduleInstanceId,
+    rows: opts.rows,
+    clearItemIds: opts.clearItemIds,
+    expectedRevision: opts.expectedRevision,
+    operation: opts.operation,
+    nextStatus: opts.nextStatus,
+    submittedAt: opts.submittedAt,
   });
-}
-
-/**
- * Serialize autosave/submit writes per module instance so concurrent PATCHes cannot
- * interleave deleteMany/createMany, and refuse writes once the module is submitted.
- */
-async function writeModuleResponsesLocked(
-  moduleInstanceId: string,
-  rows: { itemId: string; value: Prisma.InputJsonValue }[],
-  next: { status: "IN_PROGRESS" | "SUBMITTED"; submittedAt?: Date },
-): Promise<boolean> {
-  try {
-    await prisma.$transaction(async (tx) => {
-      // Row lock so concurrent autosaves queue instead of interleaving deletes.
-      const locked = await tx.$queryRaw<Array<{ id: string; status: string }>>`
-        SELECT id, status FROM "ModuleInstance" WHERE id = ${moduleInstanceId} FOR UPDATE
-      `;
-      const current = locked[0];
-      if (!current) {
-        throw new Error("MODULE_MISSING");
-      }
-      if (current.status === "SUBMITTED" || current.status === "COMPLETED") {
-        throw new Error("MODULE_LOCKED");
-      }
-
-      await tx.response.deleteMany({ where: { moduleInstanceId } });
-      if (rows.length > 0) {
-        await tx.response.createMany({
-          data: rows.map((r) => ({
-            moduleInstanceId,
-            itemId: r.itemId,
-            value: r.value,
-          })),
-        });
-      }
-      await tx.moduleInstance.update({
-        where: { id: moduleInstanceId },
-        data: {
-          status: next.status,
-          ...(next.submittedAt ? { submittedAt: next.submittedAt } : {}),
-        },
-      });
-    });
-    return true;
-  } catch (err) {
-    if (
-      err instanceof Error &&
-      (err.message === "MODULE_LOCKED" || err.message === "MODULE_MISSING")
-    ) {
-      return false;
-    }
-    throw err;
-  }
 }
 
 /**
@@ -515,6 +496,21 @@ export async function getClientModulesForClinician(
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
+export async function getEpisodeResponseReviewForClinician(
+  episodeId: string,
+  clinicianId: string,
+): Promise<EpisodeResponseReview | null> {
+  const row = await prisma.assessmentEpisode.findFirst({
+    where: { id: episodeId, clinicianId },
+    include: episodeInclude,
+  });
+  if (!row) return null;
+
+  const review = buildEpisodeResponseReview(row.id, row.modules);
+
+  return review;
+}
+
 export async function getModuleForClinician(
   episodeId: string,
   clinicianId: string,
@@ -590,51 +586,108 @@ export async function acceptSessionConsent(token: string): Promise<EpisodeRecord
   return loadEpisodeById(row.id);
 }
 
+export type ModuleWriteOptions = {
+  clearItemIds?: string[];
+  expectedRevision?: number | null;
+};
+
+/**
+ * Legacy screener autosave. Upserts included keys only — never deletes omitted answers.
+ */
 export async function updateSessionAnswers(
   token: string,
   answers: AssessmentAnswers,
+  options: ModuleWriteOptions = {},
 ): Promise<EpisodeRecord | null> {
+  const result = await updateModuleData(token, SCREENER.key, answers, options);
+  if (!result.ok) return null;
   const resolved = await resolveModuleForToken(token, SCREENER.key);
-  if (!resolved) return null;
-  const { row, mod, tokenMod } = resolved;
-  if (!tokenMod.consentAcceptedAt || !isModuleEditable(mod)) return null;
-
-  const validation = validateModulePayload(SCREENER.key, answers);
-  if (!validation.ok) return null;
-
-  const wrote = await replaceModuleResponses(
-    mod.id,
-    validation.data as AssessmentAnswers,
-  );
-  if (!wrote) return null;
-  return loadEpisodeById(row.id);
+  return resolved ? loadEpisodeById(resolved.row.id) : null;
 }
 
 /**
  * Autosave structured (or flat) data for any client module in the token-authorized episode.
+ * Upserts only itemIds present in `data`. Omitted keys are preserved.
+ * Deletes require explicit `clearItemIds`.
  */
 export async function updateModuleData(
   token: string,
   moduleKey: string,
   data: ModuleDataPayload | AssessmentAnswers,
-): Promise<ClientModuleRecord | null> {
+  options: ModuleWriteOptions = {},
+): Promise<ModuleWriteResult> {
   const resolved = await resolveModuleForToken(token, moduleKey);
-  if (!resolved) return null;
+  if (!resolved) {
+    return { ok: false, code: "not_found", message: "Module not found" };
+  }
   const { mod, tokenMod } = resolved;
-  if (!tokenMod.consentAcceptedAt || !isModuleEditable(mod)) return null;
+  if (!tokenMod.consentAcceptedAt) {
+    return { ok: false, code: "not_found", message: "Consent required" };
+  }
+  if (!isModuleEditable(mod)) {
+    return { ok: false, code: "locked", message: "Module is no longer editable" };
+  }
 
   const validation = validateModulePayload(moduleKey, data);
-  if (!validation.ok) return null;
+  if (!validation.ok) {
+    return { ok: false, code: "validation", message: validation.error };
+  }
 
-  const wrote =
+  const rows =
     moduleKey === SCREENER.key
-      ? await replaceModuleResponses(mod.id, validation.data as AssessmentAnswers)
-      : await replaceModuleData(mod.id, validation.data);
+      ? answersToRows(validation.data as AssessmentAnswers)
+      : moduleDataToRows(validation.data);
+  const clearItemIds = options.clearItemIds ?? [];
+  const operation: ResponseWriteOperation = clearItemIds.length > 0 ? "clear" : "autosave";
 
-  if (!wrote) return null;
+  const wrote = await writeModuleAnswers({
+    moduleInstanceId: mod.id,
+    rows,
+    clearItemIds,
+    expectedRevision: options.expectedRevision,
+    operation,
+    nextStatus: "IN_PROGRESS",
+  });
+
+  if (!wrote.ok) {
+    if (wrote.code === "REVISION_CONFLICT") {
+      const refreshed = await resolveModuleForToken(token, moduleKey);
+      return {
+        ok: false,
+        code: "conflict",
+        message: "This module was updated in another tab. Reload to continue.",
+        currentRevision: wrote.currentRevision,
+        module: refreshed ? moduleToClientRecord(refreshed.mod) : undefined,
+      };
+    }
+    return {
+      ok: false,
+      code: wrote.code === "MODULE_LOCKED" ? "locked" : "not_found",
+      message:
+        wrote.code === "MODULE_LOCKED"
+          ? "Module is no longer editable"
+          : "Module not found",
+    };
+  }
 
   const refreshed = await resolveModuleForToken(token, moduleKey);
-  return refreshed ? moduleToClientRecord(refreshed.mod) : null;
+  if (!refreshed) {
+    return { ok: false, code: "not_found", message: "Module not found after save" };
+  }
+
+  return {
+    ok: true,
+    module: moduleToClientRecord(refreshed.mod),
+    meta: {
+      operation,
+      moduleKey,
+      moduleInstanceId: mod.id,
+      incomingAnswerCount: rows.length,
+      storedCountBefore: wrote.storedCountBefore,
+      storedCountAfter: wrote.storedCountAfter,
+      revision: wrote.revision,
+    },
+  };
 }
 
 export async function getModuleByTokenAndKey(
@@ -646,79 +699,219 @@ export async function getModuleByTokenAndKey(
   return moduleToClientRecord(resolved.mod);
 }
 
+/**
+ * Screener submit: merge stored + incoming, require scored items, upsert without deleting omitted keys.
+ */
 export async function submitSession(
   token: string,
   answers?: AssessmentAnswers,
+  options: ModuleWriteOptions = {},
 ): Promise<EpisodeRecord | null> {
+  const result = await submitModule(token, SCREENER.key, answers, options);
+  if (!result.ok) return null;
   const resolved = await resolveModuleForToken(token, SCREENER.key);
-  if (!resolved) return null;
-  const { row, mod, tokenMod } = resolved;
-  if (!tokenMod.consentAcceptedAt || !isModuleEditable(mod)) return null;
-
-  const payload = answers ?? responsesToAnswers(mod.responses);
-  const validation = validateModulePayload(SCREENER.key, payload);
-  if (!validation.ok) return null;
-
-  const wrote = await submitModuleResponsesLocked(
-    mod.id,
-    answersToRows(validation.data as AssessmentAnswers),
-  );
-  if (!wrote) return null;
-
-  // Screener submission unlocks clinician findings/domains (episode leaves DRAFT).
-  // Other journey modules may still be in progress — episode SUBMITTED ≠ journey complete.
-  if (row.status === "DRAFT") {
-    await prisma.assessmentEpisode.update({
-      where: { id: row.id },
-      data: { status: "SUBMITTED", submittedAt: new Date() },
-    });
-  }
-
-  await logSessionEvent(row.id, "intake.submitted", {
-    actorType: "client",
-    metadata: { moduleKey: SCREENER.key },
-  });
-  return loadEpisodeById(row.id);
+  return resolved ? loadEpisodeById(resolved.row.id) : null;
 }
 
 /**
  * Submit a single client module. Does not mark the episode complete by itself
- * (except screener → episode SUBMITTED to unlock clinical review — see submitSession).
+ * (except screener → episode SUBMITTED to unlock clinical review).
  */
 export async function submitModule(
   token: string,
   moduleKey: string,
   data?: ModuleDataPayload | AssessmentAnswers,
-): Promise<ClientModuleRecord | null> {
-  if (moduleKey === SCREENER.key) {
-    const session = await submitSession(token, data as AssessmentAnswers | undefined);
-    if (!session) return null;
-    return getModuleByTokenAndKey(token, moduleKey);
+  options: ModuleWriteOptions = {},
+): Promise<ModuleWriteResult> {
+  const resolved = await resolveModuleForToken(token, moduleKey);
+  if (!resolved) {
+    return { ok: false, code: "not_found", message: "Module not found" };
+  }
+  const { row, mod, tokenMod } = resolved;
+  if (!tokenMod.consentAcceptedAt) {
+    return { ok: false, code: "not_found", message: "Consent required" };
+  }
+  if (!isModuleEditable(mod)) {
+    return { ok: false, code: "locked", message: "Module already submitted or not editable" };
   }
 
-  const resolved = await resolveModuleForToken(token, moduleKey);
-  if (!resolved) return null;
-  const { row, mod, tokenMod } = resolved;
-  if (!tokenMod.consentAcceptedAt || !isModuleEditable(mod)) return null;
+  if (moduleKey === SCREENER.key) {
+    const existing = responsesToAnswers(mod.responses);
+    const incoming = (data as AssessmentAnswers | undefined) ?? {};
+    const merged = mergeAnswerMaps(existing, incoming);
+    const validation = validateModulePayload(SCREENER.key, merged);
+    if (!validation.ok) {
+      return { ok: false, code: "validation", message: validation.error };
+    }
+    const missing = missingRequiredScreenerItems(validation.data as AssessmentAnswers);
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        code: "incomplete",
+        message:
+          "Please answer all scored questions before sharing with your clinician. Your saved answers were kept.",
+        missingItemIds: missing,
+        module: moduleToClientRecord(mod),
+      };
+    }
 
-  const payload = data ?? responsesToModuleData(mod.responses);
-  const validation = validateModulePayload(moduleKey, payload);
-  if (!validation.ok) return null;
+    // Upsert only keys present in the incoming payload (or full merged if caller omitted body).
+    const upsertSource =
+      data && typeof data === "object" ? (data as AssessmentAnswers) : merged;
+    const upsertValidation = validateModulePayload(SCREENER.key, upsertSource);
+    if (!upsertValidation.ok) {
+      return { ok: false, code: "validation", message: upsertValidation.error };
+    }
+    const rows = answersToRows(upsertValidation.data as AssessmentAnswers);
 
-  const wrote = await submitModuleResponsesLocked(
-    mod.id,
-    moduleDataToRows(validation.data),
-  );
-  if (!wrote) return null;
+    const wrote = await writeModuleAnswers({
+      moduleInstanceId: mod.id,
+      rows,
+      clearItemIds: options.clearItemIds,
+      expectedRevision: options.expectedRevision,
+      operation: "submit",
+      nextStatus: "SUBMITTED",
+      submittedAt: new Date(),
+    });
+
+    if (!wrote.ok) {
+      if (wrote.code === "REVISION_CONFLICT") {
+        const refreshed = await resolveModuleForToken(token, moduleKey);
+        return {
+          ok: false,
+          code: "conflict",
+          message: "This module was updated in another tab. Reload to continue.",
+          currentRevision: wrote.currentRevision,
+          module: refreshed ? moduleToClientRecord(refreshed.mod) : undefined,
+        };
+      }
+      return {
+        ok: false,
+        code: wrote.code === "MODULE_LOCKED" ? "locked" : "not_found",
+        message:
+          wrote.code === "MODULE_LOCKED"
+            ? "Module already submitted or not editable"
+            : "Module not found",
+      };
+    }
+
+    if (row.status === "DRAFT") {
+      await prisma.assessmentEpisode.update({
+        where: { id: row.id },
+        data: { status: "SUBMITTED", submittedAt: new Date() },
+      });
+    }
+
+    await logSessionEvent(row.id, "intake.submitted", {
+      actorType: "client",
+      moduleInstanceId: mod.id,
+      metadata: {
+        moduleKey: SCREENER.key,
+        moduleInstanceId: mod.id,
+        operation: "submit",
+        incomingAnswerCount: rows.length,
+        storedCountBefore: wrote.storedCountBefore,
+        storedCountAfter: wrote.storedCountAfter,
+        revision: wrote.revision,
+      },
+    });
+
+    const refreshed = await resolveModuleForToken(token, moduleKey);
+    if (!refreshed) {
+      return { ok: false, code: "not_found", message: "Module not found after submit" };
+    }
+    return {
+      ok: true,
+      module: moduleToClientRecord(refreshed.mod),
+      meta: {
+        operation: "submit",
+        moduleKey,
+        moduleInstanceId: mod.id,
+        incomingAnswerCount: rows.length,
+        storedCountBefore: wrote.storedCountBefore,
+        storedCountAfter: wrote.storedCountAfter,
+        revision: wrote.revision,
+      },
+    };
+  }
+
+  const existingData = responsesToModuleData(mod.responses);
+  const incoming = (data as ModuleDataPayload | undefined) ?? {};
+  const merged = { ...existingData, ...incoming };
+  const validation = validateModulePayload(moduleKey, merged);
+  if (!validation.ok) {
+    return { ok: false, code: "validation", message: validation.error };
+  }
+
+  const upsertSource = data && typeof data === "object" ? data : validation.data;
+  const upsertValidation = validateModulePayload(moduleKey, upsertSource);
+  if (!upsertValidation.ok) {
+    return { ok: false, code: "validation", message: upsertValidation.error };
+  }
+  const rows = moduleDataToRows(upsertValidation.data);
+
+  const wrote = await writeModuleAnswers({
+    moduleInstanceId: mod.id,
+    rows,
+    clearItemIds: options.clearItemIds,
+    expectedRevision: options.expectedRevision,
+    operation: "submit",
+    nextStatus: "SUBMITTED",
+    submittedAt: new Date(),
+  });
+
+  if (!wrote.ok) {
+    if (wrote.code === "REVISION_CONFLICT") {
+      const refreshed = await resolveModuleForToken(token, moduleKey);
+      return {
+        ok: false,
+        code: "conflict",
+        message: "This module was updated in another tab. Reload to continue.",
+        currentRevision: wrote.currentRevision,
+        module: refreshed ? moduleToClientRecord(refreshed.mod) : undefined,
+      };
+    }
+    return {
+      ok: false,
+      code: wrote.code === "MODULE_LOCKED" ? "locked" : "not_found",
+      message:
+        wrote.code === "MODULE_LOCKED"
+          ? "Module already submitted or not editable"
+          : "Module not found",
+    };
+  }
 
   await logSessionEvent(row.id, "module.submitted", {
     actorType: "client",
     moduleInstanceId: mod.id,
-    metadata: { moduleKey },
+    metadata: {
+      moduleKey,
+      moduleInstanceId: mod.id,
+      operation: "submit",
+      incomingAnswerCount: rows.length,
+      storedCountBefore: wrote.storedCountBefore,
+      storedCountAfter: wrote.storedCountAfter,
+      revision: wrote.revision,
+    },
   });
 
   const refreshed = await resolveModuleForToken(token, moduleKey);
-  return refreshed ? moduleToClientRecord(refreshed.mod) : null;
+  if (!refreshed) {
+    return { ok: false, code: "not_found", message: "Module not found after submit" };
+  }
+  return {
+    ok: true,
+    module: moduleToClientRecord(refreshed.mod),
+    meta: {
+      operation: "submit",
+      moduleKey,
+      moduleInstanceId: mod.id,
+      incomingAnswerCount: rows.length,
+      storedCountBefore: wrote.storedCountBefore,
+      storedCountAfter: wrote.storedCountAfter,
+      revision: wrote.revision,
+    },
+  };
 }
 
 /**

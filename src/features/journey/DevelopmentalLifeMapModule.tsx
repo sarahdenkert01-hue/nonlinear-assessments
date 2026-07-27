@@ -13,6 +13,7 @@ import {
   type LifeMapEntry,
 } from "@/lib/modules";
 import { SaveIndicator, type SaveStatus } from "./save-indicator";
+import { useModuleHydration } from "./use-module-hydration";
 
 export function DevelopmentalLifeMapModule({
   token,
@@ -22,7 +23,11 @@ export function DevelopmentalLifeMapModule({
   module: ClientModuleRecord;
 }) {
   const router = useRouter();
-  const [mod, setMod] = useState(initial);
+  const { mod, setMod, hydrated, hydrateError } = useModuleHydration(
+    token,
+    initial.moduleKey,
+    initial,
+  );
   const [entries, setEntries] = useState<LifeMapEntry[]>(() =>
     parseLifeMapData(initial.data).entries,
   );
@@ -33,7 +38,21 @@ export function DevelopmentalLifeMapModule({
     () => parseLifeMapData(initial.data).entries[0]?.id ?? null,
   );
   const dirtyRef = useRef(false);
+  const revisionRef = useRef(mod.responseRevision);
+  const hydratedOnceRef = useRef(false);
   const readOnly = mod.status === "SUBMITTED" || mod.status === "COMPLETED";
+
+  useEffect(() => {
+    revisionRef.current = mod.responseRevision;
+  }, [mod.responseRevision]);
+
+  useEffect(() => {
+    if (!hydrated || hydratedOnceRef.current || dirtyRef.current) return;
+    hydratedOnceRef.current = true;
+    const parsed = parseLifeMapData(mod.data);
+    setEntries(parsed.entries);
+    setExpandedId(parsed.entries[0]?.id ?? null);
+  }, [hydrated, mod.data]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -47,20 +66,33 @@ export function DevelopmentalLifeMapModule({
   }, [saveStatus]);
 
   const persist = useDebouncedCallback(async (nextEntries: LifeMapEntry[]) => {
-    if (readOnly) return;
+    if (readOnly || !hydrated) return;
     setSaveStatus("saving");
     try {
       const payload = { entries: nextEntries };
       const res = await fetch(`/api/intake/${token}/modules/${mod.moduleKey}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: payload }),
+        body: JSON.stringify({
+          data: payload,
+          expectedRevision: revisionRef.current,
+        }),
       });
-      if (!res.ok) throw new Error("Save failed");
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409 && json.code === "conflict" && json.module) {
+        setMod(json.module);
+        setEntries(parseLifeMapData(json.module.data).entries);
+        setSaveStatus("error");
+        setSubmitError(
+          json.error ?? "Saved answers changed in another tab. Reloaded your latest saved copy.",
+        );
+        return;
+      }
+      if (!res.ok) throw new Error(json.error ?? "Save failed");
       setMod(json.module);
       dirtyRef.current = false;
       setSaveStatus("saved");
+      setSubmitError(null);
     } catch {
       setSaveStatus("error");
     }
@@ -68,6 +100,7 @@ export function DevelopmentalLifeMapModule({
 
   const commit = useCallback(
     (updater: (prev: LifeMapEntry[]) => LifeMapEntry[]) => {
+      if (!hydrated || readOnly) return;
       setEntries((prev) => {
         const next = updater(prev).map((e, i) => ({ ...e, sortOrder: i }));
         dirtyRef.current = true;
@@ -76,7 +109,7 @@ export function DevelopmentalLifeMapModule({
         return next;
       });
     },
-    [persist],
+    [hydrated, persist, readOnly],
   );
 
   const addEntry = (lifeStage = "") => {
@@ -124,16 +157,27 @@ export function DevelopmentalLifeMapModule({
   };
 
   const handleSubmit = async () => {
+    if (!hydrated || readOnly) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       const res = await fetch(`/api/intake/${token}/modules/${mod.moduleKey}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: { entries } }),
+        body: JSON.stringify({
+          data: { entries },
+          expectedRevision: revisionRef.current,
+        }),
       });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409 && json.code === "conflict" && json.module) {
+        setMod(json.module);
+        setEntries(parseLifeMapData(json.module.data).entries);
+        throw new Error(
+          json.error ?? "Saved answers changed in another tab. Reloaded your latest saved copy.",
+        );
+      }
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? "Submit failed");
       }
       dirtyRef.current = false;
@@ -146,6 +190,14 @@ export function DevelopmentalLifeMapModule({
     }
   };
 
+  if (!hydrated) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-slate-600">
+        Loading your saved answers…
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -154,6 +206,10 @@ export function DevelopmentalLifeMapModule({
         </Link>
         <SaveIndicator status={saveStatus} />
       </div>
+
+      {(hydrateError || submitError) && (
+        <p className="mb-4 text-sm text-amber-800">{submitError ?? hydrateError}</p>
+      )}
 
       <header className="mb-8">
         <h1 className="ui-page-title">{mod.title}</h1>
@@ -354,7 +410,6 @@ export function DevelopmentalLifeMapModule({
         </div>
       )}
 
-      {submitError && <p className="mt-4 text-sm text-red-600">{submitError}</p>}
     </div>
   );
 }

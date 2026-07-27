@@ -3,12 +3,16 @@ import { jsonError, jsonNotFound } from "@/lib/api";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
 import { MODULE_KEYS, assertKnownModuleKey, validateModulePayload } from "@/lib/modules";
 import { notifyClinicianOnSubmission } from "@/lib/notifications";
-import {
-  getSessionByToken,
-  submitModule,
-} from "@/lib/episodes";
+import { getSessionByToken, submitModule } from "@/lib/episodes";
 
 type RouteContext = { params: Promise<{ token: string; moduleKey: string }> };
+
+function parseExpectedRevision(raw: unknown): number | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  return undefined;
+}
 
 export async function POST(request: Request, context: RouteContext) {
   const { token, moduleKey } = await context.params;
@@ -45,18 +49,50 @@ export async function POST(request: Request, context: RouteContext) {
       if (!validation.ok) return jsonError(validation.error, 400);
     }
 
-    const moduleRecord = await submitModule(token, moduleKey, raw);
-    if (!moduleRecord) {
-      return jsonError("Module already submitted or not found", 409);
+    const expectedRevision = parseExpectedRevision(body.expectedRevision);
+    if (body.expectedRevision !== undefined && expectedRevision === undefined) {
+      return jsonError("expectedRevision must be a number", 400);
     }
 
-    // Notify clinician when the screener is submitted (preserves existing workflow).
+    const result = await submitModule(token, moduleKey, raw, { expectedRevision });
+    if (!result.ok) {
+      if (result.code === "incomplete") {
+        return NextResponse.json(
+          {
+            error: result.message,
+            code: "incomplete",
+            missingItemIds: result.missingItemIds,
+            module: result.module,
+          },
+          { status: 422 },
+        );
+      }
+      if (result.code === "conflict") {
+        return NextResponse.json(
+          {
+            error: result.message,
+            code: "conflict",
+            currentRevision: result.currentRevision,
+            module: result.module,
+          },
+          { status: 409 },
+        );
+      }
+      if (result.code === "locked") {
+        return jsonError(result.message, 409);
+      }
+      if (result.code === "validation") {
+        return jsonError(result.message, 400);
+      }
+      return jsonError(result.message, 404);
+    }
+
     if (moduleKey === MODULE_KEYS.SCREENER) {
       const session = await getSessionByToken(token);
       if (session) await notifyClinicianOnSubmission(session);
     }
 
-    return NextResponse.json({ module: moduleRecord });
+    return NextResponse.json({ module: result.module });
   } catch {
     return jsonError("Failed to submit module", 500);
   }

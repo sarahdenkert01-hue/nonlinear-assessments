@@ -2,7 +2,10 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { ClinicianHeader } from "@/components/clinician-header";
-import { getSessionForClinician } from "@/lib/episodes";
+import {
+  getEpisodeResponseReviewForClinician,
+  getSessionForClinician,
+} from "@/lib/episodes";
 import { ensureFindingsForEpisode, listFindingsForEpisode } from "@/lib/findings";
 import { SessionAssessmentReview } from "./session-review-client";
 
@@ -37,6 +40,9 @@ export default async function CaseAssessmentPage({ params }: PageProps) {
     );
   }
 
+  const responseReview = await getEpisodeResponseReviewForClinician(id, userId);
+  if (!responseReview) notFound();
+
   // Generate findings on first review (idempotent), then load them for the client.
   await ensureFindingsForEpisode(id);
   const findings = await listFindingsForEpisode(id);
@@ -44,7 +50,11 @@ export default async function CaseAssessmentPage({ params }: PageProps) {
   return (
     <div>
       <ClinicianHeader title="Review" />
-      <SessionAssessmentReview session={session} findings={findings} />
+      <SessionAssessmentReview
+        session={session}
+        findings={findings}
+        responseReview={responseReview}
+      />
     </div>
   );
 }

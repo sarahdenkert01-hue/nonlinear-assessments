@@ -15,6 +15,8 @@ export interface ClientModuleRecord {
   /** Screener answers or structured exploration payload. */
   data: AssessmentAnswers | Record<string, unknown>;
   submittedAt: string | null;
+  /** Concurrency token for autosave/submit; null legacy rows count as 0. */
+  responseRevision: number;
   displayOrder: number;
 }
 

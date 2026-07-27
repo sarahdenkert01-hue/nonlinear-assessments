@@ -10,9 +10,22 @@ type ResponseRow = { itemId: string; value: Prisma.JsonValue };
 export function responsesToAnswers(rows: ResponseRow[]): AssessmentAnswers {
   const answers: AssessmentAnswers = {};
   for (const row of rows) {
-    answers[row.itemId] = typeof row.value === "string" ? row.value : String(row.value);
+    answers[row.itemId] = jsonValueToAnswerString(row.value);
   }
   return answers;
+}
+
+/** Normalize Prisma Json values into the flat string map the screener scorer expects. */
+function jsonValueToAnswerString(value: Prisma.JsonValue): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  // Structured JSON should not be coerced to "[object Object]" for scoring.
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 // The item ids + values a client submitted, ready to be written as Response rows.
