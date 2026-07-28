@@ -23,6 +23,7 @@ import {
   listDomainSummariesForEpisode,
 } from "@/lib/domains";
 import { AddExplorationsButton } from "./add-explorations-button";
+import { ReopenModuleButton } from "./reopen-module-button";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -119,12 +120,21 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
                           : "—"}
                       </td>
                       <td className="py-3">
-                        <Link
-                          href={`/cases/${episode.id}/modules/${m.moduleKey}`}
-                          className="ui-btn ui-btn-ghost px-2 py-1 text-xs"
-                        >
-                          {actionLabel(m.status)}
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/cases/${episode.id}/modules/${m.moduleKey}`}
+                            className="ui-btn ui-btn-ghost px-2 py-1 text-xs"
+                          >
+                            {actionLabel(m.status)}
+                          </Link>
+                          {(m.status === "SUBMITTED" || m.status === "COMPLETED") && (
+                            <ReopenModuleButton
+                              episodeId={episode.id}
+                              moduleKey={m.moduleKey}
+                              moduleTitle={m.title}
+                            />
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

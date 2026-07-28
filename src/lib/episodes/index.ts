@@ -48,6 +48,7 @@ export {
   markEpisodeComplete,
   markSessionNotified,
   revokeSessionToken,
+  reopenClientModuleForClinician,
   saveSessionReport,
   submitModule,
   submitSession,

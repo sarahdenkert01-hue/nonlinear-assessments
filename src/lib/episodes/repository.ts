@@ -1021,6 +1021,110 @@ export async function extendSessionToken(
   return loadEpisodeById(row.id);
 }
 
+/**
+ * Clinician admin: reopen a submitted/completed client module for further editing
+ * on the existing intake token. Does not create a new episode or touch other modules.
+ */
+export async function reopenClientModuleForClinician(
+  episodeId: string,
+  clinicianId: string,
+  moduleKey: string,
+  options: { clearResponses?: boolean } = {},
+): Promise<
+  | {
+      ok: true;
+      module: ClientModuleRecord;
+      clearedResponseCount: number;
+    }
+  | { ok: false; code: "not_found" | "not_locked" | "unknown_module"; message: string }
+> {
+  if (!getModuleDefinition(moduleKey) || !assertKnownModuleKey(moduleKey)) {
+    return { ok: false, code: "unknown_module", message: "Unknown module" };
+  }
+
+  const row = await prisma.assessmentEpisode.findFirst({
+    where: { id: episodeId, clinicianId },
+    include: episodeInclude,
+  });
+  if (!row) {
+    return { ok: false, code: "not_found", message: "Episode not found" };
+  }
+
+  const mod = row.modules.find(
+    (m) => m.moduleKey === moduleKey && m.audience === "CLIENT",
+  );
+  if (!mod) {
+    return { ok: false, code: "not_found", message: "Module not found" };
+  }
+  if (mod.status !== "SUBMITTED" && mod.status !== "COMPLETED") {
+    return {
+      ok: false,
+      code: "not_locked",
+      message: "Module is already editable",
+    };
+  }
+
+  const clearResponses = Boolean(options.clearResponses);
+  let clearedResponseCount = 0;
+
+  await prisma.$transaction(async (tx) => {
+    if (clearResponses) {
+      const deleted = await tx.response.deleteMany({
+        where: { moduleInstanceId: mod.id },
+      });
+      clearedResponseCount = deleted.count;
+      await tx.responseRevision.deleteMany({
+        where: { moduleInstanceId: mod.id },
+      });
+    }
+
+    await tx.moduleInstance.update({
+      where: { id: mod.id },
+      data: {
+        status: "IN_PROGRESS",
+        submittedAt: null,
+        ...(clearResponses ? { responseRevision: 0 } : {}),
+      },
+    });
+
+    // If this was the screener and no other required client modules remain submitted,
+    // move the episode back to DRAFT so review unlocks again after resubmit.
+    // Otherwise leave episode status (and clinician notes/findings) unchanged.
+    if (moduleKey === SCREENER.key) {
+      const othersStillSubmitted = row.modules.some(
+        (m) =>
+          m.id !== mod.id &&
+          m.audience === "CLIENT" &&
+          (m.status === "SUBMITTED" || m.status === "COMPLETED"),
+      );
+      if (!othersStillSubmitted && row.status === "SUBMITTED") {
+        await tx.assessmentEpisode.update({
+          where: { id: episodeId },
+          data: { status: "DRAFT", submittedAt: null },
+        });
+      }
+    }
+  });
+
+  await logSessionEvent(episodeId, "module.reopened", {
+    actorType: "clinician",
+    actorId: clinicianId,
+    moduleInstanceId: mod.id,
+    metadata: {
+      moduleKey,
+      clearResponses,
+      clearedResponseCount,
+      previousStatus: mod.status,
+    },
+  });
+
+  const refreshed = await getModuleForClinician(episodeId, clinicianId, moduleKey);
+  if (!refreshed) {
+    return { ok: false, code: "not_found", message: "Module not found after reopen" };
+  }
+  return { ok: true, module: refreshed, clearedResponseCount };
+}
+
 export async function markSessionNotified(id: string): Promise<void> {
   await prisma.assessmentEpisode.update({
     where: { id },
