@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { MouseEvent } from "react";
 import { computeDomainProgress, getAdjacentReviewableDomains } from "@/lib/domains/domain-nav";
 import type { DomainDetail, DomainSummary } from "@/lib/domains/types";
 import type { Confidence } from "@/lib/findings/types";
@@ -26,17 +27,26 @@ export function DomainStatusSidebar({
   allDomains,
   saving,
   onPatch,
+  onNavigate,
 }: {
   episodeId: string;
   domain: DomainDetail;
   allDomains: DomainSummary[];
   saving: boolean;
   onPatch: (body: Record<string, unknown>) => void;
+  /** When provided, intercepts Prev/Next/All domains so callers can flush dirty notes. */
+  onNavigate?: (href: string) => void | Promise<void>;
 }) {
   const nav = getAdjacentReviewableDomains(allDomains, domain.domainId);
   const progress = computeDomainProgress(domain);
   const synthesisPreview = excerpt(domain.evidenceSummaryDraft);
   const reportPreview = excerpt(domain.summaryDraft);
+
+  const handleNav = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!onNavigate) return;
+    event.preventDefault();
+    void onNavigate(href);
+  };
 
   return (
     <aside className="dm-report-column">
@@ -91,6 +101,9 @@ export function DomainStatusSidebar({
             <Link
               href={`/cases/${episodeId}/domains/${nav.prev.domainId}`}
               className="dm-btn dm-btn--ghost dm-domain-nav-btn"
+              onClick={(e) =>
+                handleNav(e, `/cases/${episodeId}/domains/${nav.prev!.domainId}`)
+              }
             >
               ← Prev
             </Link>
@@ -104,6 +117,9 @@ export function DomainStatusSidebar({
             <Link
               href={`/cases/${episodeId}/domains/${nav.next.domainId}`}
               className="dm-btn dm-btn--primary dm-domain-nav-btn"
+              onClick={(e) =>
+                handleNav(e, `/cases/${episodeId}/domains/${nav.next!.domainId}`)
+              }
             >
               Next →
             </Link>
@@ -112,7 +128,11 @@ export function DomainStatusSidebar({
           )}
         </nav>
 
-        <Link href={`/cases/${episodeId}/domains`} className="dm-sidebar-link">
+        <Link
+          href={`/cases/${episodeId}/domains`}
+          className="dm-sidebar-link"
+          onClick={(e) => handleNav(e, `/cases/${episodeId}/domains`)}
+        >
           All domains
         </Link>
       </section>

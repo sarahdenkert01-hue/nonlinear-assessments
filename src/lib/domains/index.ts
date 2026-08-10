@@ -23,6 +23,14 @@ export {
   getDomainDetailForEpisode,
   listDomainReportSectionsForEpisode,
   listDomainSummariesForEpisode,
+  saveManualDomainEvidence,
   updateDomainReview,
 } from "./repository";
+export {
+  MANUAL_NOTE_DRAFT_ITEM_ID,
+  applyManualNoteSave,
+  getManualNoteDraftExcerpt,
+  isManualNoteDraft,
+  type ManualNoteSaveMode,
+} from "./manual-note";
 export { computeEvidenceCoverage } from "./gaps";

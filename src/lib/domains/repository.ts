@@ -20,6 +20,10 @@ import {
   selectDomainReportSections,
   type DomainReportSection,
 } from "@/lib/reports/domain-sections";
+import {
+  MANUAL_NOTE_DRAFT_ITEM_ID,
+  type ManualNoteSaveMode,
+} from "./manual-note";
 import { getAllDomains, getDomainById, getDomainsForTheme } from "./registry";
 import { generateDomainEvidenceSummary } from "./synthesize-summary";
 import {
@@ -348,11 +352,21 @@ export async function updateDomainReview(
   return getDomainDetailForEpisode(episodeId, domainId);
 }
 
-export async function addManualDomainEvidence(
+/**
+ * Persist clinician manual evidence.
+ * - draft: upsert the single in-progress MANUAL_NOTE draft row (no duplicates on debounce)
+ * - finalize: promote draft to a saved note (clears draft itemId) so a new draft can start
+ *
+ * Finalized MANUAL_NOTE rows (itemId != draft marker) are never selected for draft upsert, so they
+ * cannot be reused as the autosave draft. Concurrent draft writes are serialized in a transaction
+ * and collapsed to at most one `__manual_note_draft__` row per domain review.
+ */
+export async function saveManualDomainEvidence(
   episodeId: string,
   domainId: string,
   clinicianId: string,
   excerpt: string,
+  mode: ManualNoteSaveMode = "draft",
 ): Promise<DomainDetail | null> {
   if (!getDomainById(domainId)) return null;
 
@@ -367,21 +381,90 @@ export async function addManualDomainEvidence(
     update: {},
   });
 
-  await prisma.domainEvidence.create({
-    data: {
-      domainReviewId: review.id,
-      sourceType: "MANUAL_NOTE",
-      excerpt: excerpt.trim(),
-    },
+  const text = excerpt.trim();
+
+  await prisma.$transaction(async (tx) => {
+    const drafts = await tx.domainEvidence.findMany({
+      where: {
+        domainReviewId: review.id,
+        sourceType: "MANUAL_NOTE",
+        itemId: MANUAL_NOTE_DRAFT_ITEM_ID,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    const primaryDraft = drafts[0] ?? null;
+    if (drafts.length > 1) {
+      await tx.domainEvidence.deleteMany({
+        where: { id: { in: drafts.slice(1).map((d) => d.id) } },
+      });
+    }
+
+    if (mode === "draft") {
+      if (!text) {
+        if (primaryDraft) {
+          await tx.domainEvidence.delete({ where: { id: primaryDraft.id } });
+        }
+        return;
+      }
+      if (primaryDraft) {
+        await tx.domainEvidence.update({
+          where: { id: primaryDraft.id },
+          data: { excerpt: text },
+        });
+        return;
+      }
+      await tx.domainEvidence.create({
+        data: {
+          domainReviewId: review.id,
+          sourceType: "MANUAL_NOTE",
+          itemId: MANUAL_NOTE_DRAFT_ITEM_ID,
+          excerpt: text,
+        },
+      });
+      return;
+    }
+
+    // finalize — never rewrite other finalized MANUAL_NOTE rows
+    if (!text) return;
+    if (primaryDraft) {
+      await tx.domainEvidence.update({
+        where: { id: primaryDraft.id },
+        data: { excerpt: text, itemId: null },
+      });
+      return;
+    }
+    await tx.domainEvidence.create({
+      data: {
+        domainReviewId: review.id,
+        sourceType: "MANUAL_NOTE",
+        excerpt: text,
+      },
+    });
   });
 
-  await logSessionEvent(episodeId, "review.domain_evidence_added", {
-    actorType: "clinician",
-    actorId: clinicianId,
-    metadata: { domainId, sourceType: "MANUAL_NOTE" },
-  });
+  await logSessionEvent(
+    episodeId,
+    mode === "finalize"
+      ? "review.domain_evidence_added"
+      : "review.domain_evidence_draft_saved",
+    {
+      actorType: "clinician",
+      actorId: clinicianId,
+      metadata: { domainId, sourceType: "MANUAL_NOTE", mode },
+    },
+  );
 
   return getDomainDetailForEpisode(episodeId, domainId);
+}
+
+/** @deprecated Prefer saveManualDomainEvidence(..., "finalize") */
+export async function addManualDomainEvidence(
+  episodeId: string,
+  domainId: string,
+  clinicianId: string,
+  excerpt: string,
+): Promise<DomainDetail | null> {
+  return saveManualDomainEvidence(episodeId, domainId, clinicianId, excerpt, "finalize");
 }
 
 export async function generateAndSaveEvidenceSummary(

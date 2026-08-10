@@ -4,8 +4,8 @@ import { jsonError, jsonNotFound } from "@/lib/api";
 import { getSessionForClinician } from "@/lib/episodes";
 import type { Confidence } from "@/lib/findings/types";
 import {
-  addManualDomainEvidence,
   getDomainDetailForEpisode,
+  saveManualDomainEvidence,
   updateDomainReview,
   type UpdateDomainReviewInput,
 } from "@/lib/domains";
@@ -131,13 +131,22 @@ export async function POST(request: Request, context: RouteContext) {
     if (!session) return jsonNotFound("Episode");
 
     const body = await parseBody(request);
-    const excerpt = typeof body.excerpt === "string" ? body.excerpt.trim() : "";
-    if (!excerpt) return jsonError("excerpt is required", 400);
+    const excerpt = typeof body.excerpt === "string" ? body.excerpt : "";
+    const mode = body.mode === "finalize" ? "finalize" : "draft";
+    if (mode === "finalize" && !excerpt.trim()) {
+      return jsonError("excerpt is required", 400);
+    }
 
-    const domain = await addManualDomainEvidence(id, domainId, clinicianId, excerpt);
+    const domain = await saveManualDomainEvidence(
+      id,
+      domainId,
+      clinicianId,
+      excerpt,
+      mode,
+    );
     if (!domain) return jsonNotFound("Domain");
 
-    return NextResponse.json({ domain });
+    return NextResponse.json({ domain, mode });
   } catch (err) {
     return handleError(err, "POST /api/episodes/:id/domains/:domainId");
   }

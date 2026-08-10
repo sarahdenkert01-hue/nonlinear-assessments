@@ -1,16 +1,23 @@
+"use client";
+
 import type { EvidenceBucketView, EvidenceSourceType } from "@/lib/domains/types";
+import { isManualNoteDraft } from "@/lib/domains/manual-note";
 
 export function SupportingEvidencePanel({
   confirmedFindingCount,
   evidenceCount,
   evidenceBuckets,
+  forceOpenBucketIds = [],
 }: {
   domainId?: string;
   confirmedFindingCount: number;
   evidenceCount: number;
   sourceTypes?: EvidenceSourceType[];
   evidenceBuckets: EvidenceBucketView[];
+  forceOpenBucketIds?: string[];
 }) {
+  const forced = new Set(forceOpenBucketIds);
+
   return (
     <section id="section-know" className="dm-workspace-section">
       <h2 className="dm-section-heading">Supporting evidence</h2>
@@ -34,7 +41,11 @@ export function SupportingEvidencePanel({
       ) : (
         <div className="dm-source-groups">
           {evidenceBuckets.map((bucket) => (
-            <details key={bucket.id} className="dm-source-group" open={bucket.id === "screener"}>
+            <details
+              key={bucket.id}
+              className="dm-source-group"
+              open={bucket.id === "screener" || forced.has(bucket.id)}
+            >
               <summary className="dm-source-group-summary">
                 <span className="dm-source-group-label">{bucket.label}</span>
                 <span className="dm-source-group-meta">
@@ -77,6 +88,9 @@ export function SupportingEvidencePanel({
                     <li key={e.id} className="dm-evidence-item">
                       {e.findingLabel && (
                         <div className="dm-finding-meta">{e.findingLabel}</div>
+                      )}
+                      {isManualNoteDraft(e) && (
+                        <div className="dm-finding-meta">Draft (autosaved)</div>
                       )}
                       <div className="dm-evidence-a">{e.excerpt || e.itemId || "Evidence item"}</div>
                     </li>
