@@ -7,7 +7,12 @@ export type {
   FindingStatus,
   UpdateFindingInput,
 } from "./types";
-export { planFindings, isIncludedStatus, type FindingDraft } from "./plan";
+export {
+  planFindings,
+  isIncludedStatus,
+  isReportEligibleStatus,
+  type FindingDraft,
+} from "./plan";
 export {
   addFinding,
   buildFindingThemeContext,

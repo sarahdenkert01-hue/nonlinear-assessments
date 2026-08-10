@@ -5,7 +5,7 @@ import {
   resolveThemesWithOverrides,
   type ClinicianOverrides,
 } from "@/features/assessments";
-import { isIncludedStatus, planFindings } from "./plan";
+import { isIncludedStatus, isReportEligibleStatus, planFindings } from "./plan";
 
 // The set of finding codes that end up in the report must match the old theme-inclusion logic.
 function includedCodesFromPlan(
@@ -79,6 +79,14 @@ describe("planFindings — status + source transitions", () => {
     expect(masking?.status).toBe("EXCLUDED");
     expect(masking?.source).toBe("ALGORITHM");
     expect(isIncludedStatus(masking!.status)).toBe(false);
+    expect(isReportEligibleStatus(masking!.status)).toBe(false);
+  });
+
+  it("treats PROPOSED as workspace-visible but not report-eligible", () => {
+    expect(isIncludedStatus("PROPOSED")).toBe(true);
+    expect(isReportEligibleStatus("PROPOSED")).toBe(false);
+    expect(isReportEligibleStatus("ACCEPTED")).toBe(true);
+    expect(isReportEligibleStatus("EDITED")).toBe(true);
   });
 
   it("does not create a finding for an unflagged theme with no override", () => {

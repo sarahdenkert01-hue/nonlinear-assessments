@@ -16,6 +16,10 @@ import {
   groupAssessmentOpportunities,
   type GapFindingSignal,
 } from "./gaps";
+import {
+  selectDomainReportSections,
+  type DomainReportSection,
+} from "@/lib/reports/domain-sections";
 import { getAllDomains, getDomainById, getDomainsForTheme } from "./registry";
 import { generateDomainEvidenceSummary } from "./synthesize-summary";
 import {
@@ -479,4 +483,18 @@ export async function countConfirmedFindings(episodeId: string): Promise<number>
   return prisma.finding.count({
     where: { episodeId, status: { in: [...CONFIRMED_STATUSES] } },
   });
+}
+
+/**
+ * Load clinician-authored domain narratives for report assembly.
+ * Read-only; does not create or mutate DomainReview rows.
+ */
+export async function listDomainReportSectionsForEpisode(
+  episodeId: string,
+): Promise<DomainReportSection[]> {
+  const rows = await prisma.domainReview.findMany({
+    where: { episodeId },
+    select: { domainId: true, summaryDraft: true },
+  });
+  return selectDomainReportSections(rows);
 }

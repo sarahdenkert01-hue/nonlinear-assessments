@@ -1,66 +1,109 @@
 import type { ReportContext } from "./build-context";
+import { formatDomainReportSections } from "./domain-sections";
 import type { ReportProfile } from "./types";
 
 const PROFILE_HINTS: Record<ReportProfile, string> = {
-  brief: "Keep the entire report concise (roughly 1 page). Short paragraphs only.",
-  standard: "Use moderate depth (roughly 2–3 pages).",
+  brief: "Keep the generative sections concise (roughly 1 page total with domains).",
+  standard: "Use moderate depth for the clinical summary and next steps.",
   detailed:
-    "Use comprehensive depth (roughly 4+ pages). Expand functional analysis per theme.",
+    "Use comprehensive depth for the clinical summary and next steps (domains are already written).",
 };
 
+/**
+ * Prompt for generative sections only. Domain narratives are fixed source material
+ * and must not be rewritten or omitted by the model — they are assembled outside the LLM.
+ */
 export function buildReportPrompt(
   context: ReportContext,
   options?: { profile?: ReportProfile; narrativeOnly?: boolean; existingDraft?: string },
 ): string {
-  const themesJson = JSON.stringify(context.themes, null, 2);
   const profile = options?.profile ?? "standard";
-  const narrativeOnly = options?.narrativeOnly && options.existingDraft?.trim();
+  const hasDomains = context.domains.length > 0;
+  const themesJson = JSON.stringify(context.themes, null, 2);
+  const domainsBlock = hasDomains
+    ? formatDomainReportSections(context.domains)
+    : "(none — no clinician-authored domain summaries yet)";
 
-  const narrativeOnlyBlock = narrativeOnly
-    ? `
+  const narrativeOnlyBlock =
+    options?.narrativeOnly && options.existingDraft?.trim()
+      ? `
 ## Narrative-only regeneration
-The clinician already approved theme subsections. Rewrite ONLY:
-- **Clinical summary**
-- **Recommended next steps**
-Do NOT change theme subsection titles or the list of themes covered.
-Preserve this draft's theme sections verbatim where possible:
+Rewrite ONLY the clinical summary and recommended next steps.
+Do NOT invent or alter clinical domain sections — those are assembled outside your response.
+Preserve intent from this draft where helpful:
 
 ---
 ${options.existingDraft}
 ---
 `
-    : "";
+      : "";
 
-  return `You are an expert clinical writer assisting a licensed clinician. Draft a narrative clinical assessment report in Markdown for "${context.clientName}".
+  if (hasDomains) {
+    return `You are an expert clinical writer assisting a licensed clinician. Write ONLY the generative framing sections for "${context.clientName}".
+
+## Length profile
+${PROFILE_HINTS[profile]}
+${narrativeOnlyBlock}
+
+## Fixed clinician domain narratives (READ-ONLY)
+These domains already appear in the final report verbatim. Do NOT rewrite, summarize, omit, reorder, or reinterpret them. Use them only as source material for the overall clinical summary and next steps.
+
+${domainsBlock}
+
+## Supporting approved findings (context only; ACCEPTED/EDITED)
+${themesJson}
+
+## Clinician notes
+${context.clinicianNotes?.trim() || "(none provided)"}
+
+## Your task
+Output EXACTLY these two marked blocks and nothing else (no domain subsections, no theme subsections):
+
+<<<CLINICAL_SUMMARY>>>
+2–4 paragraphs: cross-cutting patterns, functional impact, strengths if evident, overall clinical picture. Third person. Do not invent facts beyond the provided domains/findings/notes.
+<<<END_CLINICAL_SUMMARY>>>
+
+<<<NEXT_STEPS>>>
+Specific follow-up recommendations (interview, collateral, measures, rule-outs, planning). Markdown list is fine.
+<<<END_NEXT_STEPS>>>
+
+## Strict rules
+- Do NOT output Clinical domains or Theme formulations sections.
+- Do NOT change domain titles or domain body text.
+- Label tone: neutral, professional; this is a draft, not a diagnosis.
+- Use only provided data.`;
+  }
+
+  // Legacy theme-based generative prompt (no clinician domain summaries).
+  return `You are an expert clinical writer assisting a licensed clinician. Draft generative framing for "${context.clientName}" from approved clinical themes.
 
 ## Length profile
 ${PROFILE_HINTS[profile]}
 ${narrativeOnlyBlock}
 
 ## Your task
-Synthesize intake data into readable clinical prose — like a psychologist's draft memo, not a data export.
+Output EXACTLY these marked blocks:
 
-## Required structure
-1. **Clinical summary** (2–4 paragraphs): Cross-cutting patterns, functional impact on daily life, strengths/resources if evident in the data, and overall clinical picture. Write in third person about the client.
-2. **Theme formulations** (one subsection per included theme): For each theme, write 2–3 paragraphs of clinical interpretation:
-   - What this theme means functionally (work, relationships, self-regulation, identity)
-   - How endorsed items fit together as a pattern (do not list every item as bullets)
-   - Clinical hypotheses to explore in interview (phrased as "may suggest" / "warrants exploration", not definitive diagnosis)
-   - End with a short **Supporting indicators** line with 2–4 key item IDs only (e.g. "Indicators: q01, q07, q12")
-3. **Integration with clinician notes** (if notes provided): Weave clinician observations into the formulation.
-4. **Recommended next steps**: Specific follow-up (collateral, standardized measures, referral types, safety check if relevant from data).
+<<<CLINICAL_SUMMARY>>>
+2–4 paragraphs synthesizing the approved themes. Third person. Not a diagnosis.
+<<<END_CLINICAL_SUMMARY>>>
+
+<<<THEME_FORMULATIONS>>>
+One ### subsection per approved theme (${context.themes.length} required). For each: functional meaning, pattern synthesis, interview hypotheses ("may suggest"), and a short Supporting indicators line with 2–4 item IDs.
+<<<END_THEME_FORMULATIONS>>>
+
+<<<NEXT_STEPS>>>
+Specific follow-up recommendations.
+<<<END_NEXT_STEPS>>>
 
 ## Strict rules
-- Do NOT output the report as a bullet list of questionnaire questions and answers.
-- Do NOT repeat every item ID and full question text — synthesize into narrative.
-- Use only provided data; do not invent trauma history, diagnoses, medications, or family details not in the themes/notes.
-- Label clearly at the top: "DRAFT — For clinician review. Not a diagnosis."
-- Neutral, professional tone. Avoid stigmatizing language.
-- ${context.themes.length} theme(s) must each receive a substantive narrative subsection.
+- ${context.themes.length} theme(s) must each receive a substantive ### subsection with the exact theme label as the heading.
+- Use only provided data; do not invent trauma history, diagnoses, medications, or family details.
+- Neutral, professional tone.
 
 ## Clinician notes
 ${context.clinicianNotes?.trim() || "(none provided)"}
 
-## Structured theme data (use for synthesis, not for copy-paste listing)
+## Structured theme data
 ${themesJson}`;
 }

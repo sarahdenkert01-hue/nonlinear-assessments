@@ -38,8 +38,9 @@ enum AuthorType {
   SYSTEM
 }
 
-// Lifecycle of a clinical finding. PROPOSED/ACCEPTED/EDITED are included in the report;
-// EXCLUDED is kept for the record but left out. A finding is never auto-"confirmed".
+// Lifecycle of a clinical finding. ACCEPTED/EDITED may enter the final report as supporting
+// context; PROPOSED stays in the workspace until the clinician decides; EXCLUDED is kept for
+// the record but left out. A finding is never auto-"confirmed".
 enum FindingStatus {
   PROPOSED
   ACCEPTED

@@ -1,6 +1,8 @@
 import { getTimeoutMs, withTimeout } from "@/lib/with-timeout";
+import { assembleClinicalReport } from "./assemble";
 import { buildReportContext } from "./build-context";
 import { generateLlmReport } from "./llm";
+import { parseGenerativeReportParts } from "./parse-generative";
 import { generateTemplateReport } from "./template";
 import type { GeneratedReport, ReportGenerationInput } from "./types";
 
@@ -15,6 +17,10 @@ function llmTimeoutMs(): number {
   return getTimeoutMs(process.env.REPORT_LLM_TIMEOUT_MS, 30_000);
 }
 
+/**
+ * Pure report generation — does not read or write persisted episode.reportDraft.
+ * Callers (explicit regenerate API) are responsible for saving.
+ */
 export async function generateClinicalReport(
   input: ReportGenerationInput,
 ): Promise<GeneratedReport> {
@@ -23,7 +29,7 @@ export async function generateClinicalReport(
 
   if (hasLlmKey()) {
     try {
-      const { draft, provider } = await withTimeout(
+      const { draft: llmText, provider } = await withTimeout(
         generateLlmReport(context, {
           profile: input.profile,
           narrativeOnly: input.narrativeOnly,
@@ -32,6 +38,11 @@ export async function generateClinicalReport(
         llmTimeoutMs(),
         "AI report generation",
       );
+      const generative = parseGenerativeReportParts(llmText);
+      const draft = assembleClinicalReport(context, {
+        generative,
+        sourceNote: ` via ${provider} (domains/themes assembled outside the model)`,
+      });
       return { draft, source: provider, generatedAt };
     } catch (err) {
       const message =

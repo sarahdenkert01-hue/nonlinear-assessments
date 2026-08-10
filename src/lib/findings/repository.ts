@@ -235,8 +235,9 @@ export async function buildFindingThemeContext(
   const clientMod = episode ? clientModuleOf(episode) : null;
   const answers = clientMod ? responsesToAnswers(clientMod.responses) : {};
 
+  // Final report supporting themes: clinician-approved findings only (not PROPOSED).
   const findings = await prisma.finding.findMany({
-    where: { episodeId, status: { not: "EXCLUDED" } },
+    where: { episodeId, status: { in: ["ACCEPTED", "EDITED"] } },
     include: { evidence: true },
     orderBy: { hits: "desc" },
   });

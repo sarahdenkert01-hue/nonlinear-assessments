@@ -58,7 +58,12 @@ export function planFindings(
   return drafts;
 }
 
-// Findings that count toward the report (everything except EXCLUDED).
+// Findings that count as non-excluded in the clinician workspace (includes PROPOSED).
 export function isIncludedStatus(status: FindingStatus): boolean {
   return status !== "EXCLUDED";
+}
+
+/** Findings eligible for final report supporting context / theme sections. */
+export function isReportEligibleStatus(status: FindingStatus): boolean {
+  return status === "ACCEPTED" || status === "EDITED";
 }

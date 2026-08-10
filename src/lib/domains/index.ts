@@ -21,6 +21,7 @@ export {
   generateAndSaveEvidenceSummary,
   generateAndSaveSuggestedQuestions,
   getDomainDetailForEpisode,
+  listDomainReportSectionsForEpisode,
   listDomainSummariesForEpisode,
   updateDomainReview,
 } from "./repository";

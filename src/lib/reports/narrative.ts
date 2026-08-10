@@ -64,7 +64,7 @@ function formatExamples(theme: ThemeReportContext): string {
     .join("; ");
 }
 
-function themeNarrative(theme: ThemeReportContext): string {
+export function themeNarrative(theme: ThemeReportContext): string {
   const framing =
     THEME_FRAMING[theme.id] ??
     `clinically relevant patterns in the area of ${theme.label.toLowerCase()}`;
@@ -100,6 +100,15 @@ _Supporting indicators: ${theme.endorsedItems.map((i) => i.id).join(", ")}._`;
 }
 
 function crossCuttingSummary(context: ReportContext): string {
+  if (context.domains.length > 0) {
+    const labels = context.domains.map((d) => d.label).join("; ");
+    const themeNote =
+      context.themes.length > 0
+        ? ` Approved supporting findings contribute ${context.themes.length} theme signal(s) as context.`
+        : "";
+    return `This draft integrates ${context.domains.length} clinician-authored clinical domain narrative(s): ${labels}.${themeNote} The domain sections below preserve the clinician's wording; this summary only frames the overall clinical picture for follow-up.`;
+  }
+
   const { themes } = context;
   if (themes.length === 0) {
     return "No clinical themes were selected for inclusion in this report. Consider whether additional intake review or clinician-driven theme selection is needed before finalizing documentation.";

@@ -4,6 +4,7 @@ import {
   getTriggeredQuestionsForTheme,
   resolveThemesWithOverrides,
 } from "@/features/assessments/lib/scoring";
+import type { DomainReportSection } from "./domain-sections";
 import type { ReportGenerationInput } from "./types";
 
 export interface ThemeReportContext {
@@ -19,18 +20,26 @@ export interface ThemeReportContext {
 export interface ReportContext {
   clientName: string;
   clinicianNotes?: string;
+  /** Clinician-authored domain narratives (source of truth when non-empty). */
+  domains: DomainReportSection[];
+  /**
+   * Supporting theme findings (ACCEPTED/EDITED only in episode flow).
+   * Used for generative summary context and legacy theme sections when no domains.
+   */
   themes: ThemeReportContext[];
 }
 
 /** Build structured context for template or LLM report generation. */
 export function buildReportContext(input: ReportGenerationInput): ReportContext {
-  // Real episode flow: build straight from the clinician's included findings.
+  const domains = input.domainSections ?? [];
+  // Real episode flow: build from clinician-approved findings when provided.
   // Dev preview: no persisted findings, so compute themes from raw answers as before.
   const themes = input.findingThemes ?? computeThemesFromAnswers(input);
 
   return {
     clientName: input.clientName?.trim() || "Client",
     clinicianNotes: input.clinicianNotes?.trim() || undefined,
+    domains,
     themes,
   };
 }

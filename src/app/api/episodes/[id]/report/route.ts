@@ -3,6 +3,7 @@ import type { ClinicianOverrides } from "@/features/assessments";
 import { logSessionEvent } from "@/lib/audit";
 import { requireClinicianId } from "@/lib/auth";
 import { jsonError, jsonNotFound } from "@/lib/api";
+import { listDomainReportSectionsForEpisode } from "@/lib/domains";
 import { generateClinicalReport } from "@/lib/reports/generate";
 import { getSessionForClinician, saveSessionReport } from "@/lib/episodes";
 import { buildFindingThemeContext, ensureFindingsForEpisode } from "@/lib/findings";
@@ -44,10 +45,13 @@ export async function POST(request: Request, context: RouteContext) {
           ? "standard"
           : undefined;
 
-    // The report is a projection of the clinician's findings, not a re-computation from answers.
-    // Generate findings on first pass (idempotent), then build the report from included findings.
+    // DomainReview.summaryDraft is the report body source of truth when present.
+    // Approved findings (ACCEPTED/EDITED) remain supporting context. Explicit regenerate only.
     await ensureFindingsForEpisode(id);
-    const findingThemes = await buildFindingThemeContext(id);
+    const [findingThemes, domainSections] = await Promise.all([
+      buildFindingThemeContext(id),
+      listDomainReportSectionsForEpisode(id),
+    ]);
 
     const report = await generateClinicalReport({
       clientName: session.clientName ?? undefined,
@@ -55,6 +59,7 @@ export async function POST(request: Request, context: RouteContext) {
       overrides,
       resolvedThemes: [],
       findingThemes,
+      domainSections,
       clinicianNotes,
       profile:
         profile ??

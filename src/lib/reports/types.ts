@@ -4,6 +4,7 @@ import type {
   ResolvedTheme,
 } from "@/features/assessments/types";
 import type { ThemeReportContext } from "./build-context";
+import type { DomainReportSection } from "./domain-sections";
 
 export type LlmProvider = "gemini" | "anthropic";
 
@@ -23,11 +24,15 @@ export interface ReportGenerationInput {
   narrativeOnly?: boolean;
   existingDraft?: string;
   /**
-   * Included clinical findings mapped to report themes. When present (the real episode flow),
-   * the report is built from these instead of re-computing themes from raw answers. Left unset by
-   * the dev preview, which has no persisted findings.
+   * Clinician-approved findings (ACCEPTED/EDITED) mapped to report themes.
+   * Supporting context for generative sections; legacy theme body when no domains.
    */
   findingThemes?: ThemeReportContext[];
+  /**
+   * Clinician-authored domain narratives. When present, these are the report body
+   * source of truth and are never rewritten by the LLM.
+   */
+  domainSections?: DomainReportSection[];
 }
 
 export interface GeneratedReport {
