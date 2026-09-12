@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AssessmentJourney } from "@/features/journey";
 import { hasConsent } from "@/lib/intake-access";
-import type { AssessmentSessionRecord } from "@/lib/episodes";
+import type { ClientIntakeDTO } from "@/lib/episodes";
 import type { ClientAssessmentEpisode } from "@/lib/modules";
 import { IntakeConsent } from "./intake-consent";
 
@@ -11,7 +11,7 @@ export function IntakeClient({
   session: initialSession,
   episode: initialEpisode,
 }: {
-  session: AssessmentSessionRecord;
+  session: ClientIntakeDTO;
   episode: ClientAssessmentEpisode;
 }) {
   const [session, setSession] = useState(initialSession);

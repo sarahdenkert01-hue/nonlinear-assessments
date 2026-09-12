@@ -1,13 +1,10 @@
-import { SignUp } from "@clerk/nextjs";
-import { AuthShell } from "@/components/auth-shell";
+import { redirect } from "next/navigation";
 
+/**
+ * Public clinician self-registration is disabled for this single-clinician app.
+ * Keep the route so bookmarks / Clerk env URLs do not 404; send people to sign-in.
+ * Enforce invite-only / restricted sign-ups in the Clerk Dashboard as well.
+ */
 export default function SignUpPage() {
-  return (
-    <AuthShell
-      title="Create account"
-      subtitle="Register as a clinician to create intake links and review assessments."
-    >
-      <SignUp forceRedirectUrl="/dashboard" signInUrl="/sign-in" />
-    </AuthShell>
-  );
+  redirect("/sign-in");
 }

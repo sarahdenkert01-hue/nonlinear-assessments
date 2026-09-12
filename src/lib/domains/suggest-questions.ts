@@ -8,6 +8,26 @@ const DOMAIN_QUESTIONS: Record<string, string[]> = {
     "How were these challenges viewed in school or early work settings?",
     "What strategies have you developed to compensate?",
     "What happens when demands exceed your capacity?",
+    // Task initiation
+    "When you feel 'stuck' before starting, what does that feel like in your body or mind?",
+    "Is the barrier closer to forgetting, low interest, overwhelm, not knowing the steps, anxiety, fatigue, physical pain, sensory load, or difficulty making the transition into action?",
+    // Switching / inertia
+    "Is starting harder, stopping harder, or both?",
+    "What happens when you are interrupted mid-task—can you resume, or do you lose the thread?",
+    "Are transitions easier with warning, a predictable routine, a sense of closure, or another person’s support?",
+    // Urgency / interest
+    "Does urgency, novelty, or interest unlock action for you?",
+    "Does a deadline create temporary access to functioning that is hard to sustain otherwise?",
+    // External activation
+    "Does having another person present (body doubling), expecting something, or helping you begin make starting easier?",
+    "If accountability helps, is it more about urgency, structure, co-regulation, or clarity of the next step?",
+    // Load
+    "How do sensory, social, cognitive, physical, and emotional load change your access to starting or organizing?",
+    // Developmental course
+    "Were these patterns present in childhood or adolescence, or did they become much more noticeable later?",
+    "Did starting, organizing, remembering, or completing tasks worsen after pain, illness, trauma, burnout, sleep disruption, or another major change?",
+    // Functional inconsistency
+    "What makes the same task possible one day and inaccessible another, even when you still know how to do it?",
   ],
   "attention-regulation": [
     "When is focus easiest versus hardest for you?",
@@ -28,11 +48,13 @@ const DOMAIN_QUESTIONS: Record<string, string[]> = {
     "What typically precedes periods of burnout or shutdown?",
     "What helps you recover, and how long do recovery periods last?",
     "How does functional capacity change during and after collapse?",
+    "After overload or burnout, how hard is it to initiate even simple tasks?",
   ],
   "sensory-processing": [
     "Which sensory environments are most overwhelming?",
     "How do you manage or avoid sensory overload?",
     "When did sensory sensitivities first become noticeable?",
+    "Does reducing sensory load make task initiation or transitions easier?",
   ],
   "nervous-system-regulation": [
     "What triggers a heightened stress or vigilance response?",
@@ -101,6 +123,22 @@ const FINDING_QUESTIONS: Record<string, string[]> = {
   "executive-dysfunction": [
     "When did planning or organization difficulties first appear?",
     "How were these viewed in school?",
+  ],
+  "executive-functioning-activation": [
+    "Which is harder day to day—remembering later intentions, sequencing steps, prioritizing, or sensing time?",
+    "What external supports (lists, alarms, scaffolding) help most, and when do they fail?",
+  ],
+  "task-initiation-state-dependence": [
+    "When initiation is hard, is it closer to low interest, overwhelm, fatigue, sensory load, anxiety, or inability to transition?",
+    "Does urgency, novelty, another person, or reduced load change access to starting?",
+  ],
+  "switching-engagement-inertia": [
+    "Is shifting away from something harder than starting, or the reverse?",
+    "What helps after an interruption—closure, a written next step, quiet, or time?",
+  ],
+  "functional-inconsistency": [
+    "What makes the same skill available one day and inaccessible another?",
+    "How do sleep, pain, load, and mood change access to abilities you already have?",
   ],
 };
 

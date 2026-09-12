@@ -1,0 +1,42 @@
+.acquired-ef-banner {
+  margin: 1rem 0 1.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--accent, #cfcedd) 55%, #c4b5a0);
+  background: color-mix(in srgb, var(--accent-soft, #f3f1f8) 70%, #f7f1e8);
+}
+
+.acquired-ef-banner-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.acquired-ef-banner-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--foreground, #170f2a);
+}
+
+.acquired-ef-banner-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted, #74648b);
+}
+
+.acquired-ef-banner-body,
+.acquired-ef-banner-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--foreground, #170f2a);
+}
+
+.acquired-ef-banner-note {
+  color: var(--muted, #74648b);
+}

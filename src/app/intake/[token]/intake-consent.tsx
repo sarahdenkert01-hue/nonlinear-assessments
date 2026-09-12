@@ -15,14 +15,14 @@ import {
   intakeWelcomeLead,
 } from "@/content/intake-consent";
 import "@/features/assessments/components/assessment.css";
-import type { AssessmentSessionRecord } from "@/lib/episodes";
+import type { ClientIntakeDTO } from "@/lib/episodes";
 
 export function IntakeConsent({
   session,
   onAccepted,
 }: {
-  session: AssessmentSessionRecord;
-  onAccepted: (session: AssessmentSessionRecord) => void;
+  session: ClientIntakeDTO;
+  onAccepted: (session: ClientIntakeDTO) => void;
 }) {
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);

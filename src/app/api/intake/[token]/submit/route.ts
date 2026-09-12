@@ -3,7 +3,11 @@ import type { AssessmentAnswers } from "@/features/assessments";
 import { jsonError, jsonNotFound } from "@/lib/api";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
 import { notifyClinicianOnSubmission } from "@/lib/notifications";
-import { getSessionByToken, submitSession } from "@/lib/episodes";
+import {
+  getSessionByToken,
+  submitSession,
+  toClientIntakeDTO,
+} from "@/lib/episodes";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
@@ -38,7 +42,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     await notifyClinicianOnSubmission(session);
 
-    return NextResponse.json({ session });
+    return NextResponse.json({ session: toClientIntakeDTO(session) });
   } catch {
     return jsonError("Failed to submit session", 500);
   }

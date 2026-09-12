@@ -11,6 +11,12 @@ export type {
   UpdateSessionReviewInput,
 } from "./types";
 export type { ClientModuleRecord } from "./types";
+export type { ClientIntakeDTO, ClientIntakeForbiddenKey } from "./client-intake-dto";
+export {
+  CLIENT_INTAKE_FORBIDDEN_KEYS,
+  findForbiddenClientIntakeKey,
+  toClientIntakeDTO,
+} from "./client-intake-dto";
 export type {
   EpisodeResponseReview,
   ModuleResponseReview,

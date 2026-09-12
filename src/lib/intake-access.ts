@@ -1,4 +1,13 @@
-import type { AssessmentSessionRecord } from "@/lib/episodes";
+import type { ClientIntakeDTO } from "@/lib/episodes/client-intake-dto";
+import type { SessionStatus } from "@/lib/episodes/types";
+
+/** Minimal fields needed for intake access / consent checks (server or client DTO). */
+export type IntakeAccessFields = {
+  revokedAt: string | null;
+  tokenExpiresAt: string | null;
+  consentAcceptedAt?: string | null;
+  status?: SessionStatus;
+};
 
 export type IntakeAccessDenial =
   | "not_found"
@@ -7,7 +16,7 @@ export type IntakeAccessDenial =
   | "consent_required";
 
 export function getIntakeAccessDenial(
-  session: AssessmentSessionRecord | null,
+  session: IntakeAccessFields | null,
 ): IntakeAccessDenial | null {
   if (!session) return "not_found";
   if (session.revokedAt) return "revoked";
@@ -17,10 +26,12 @@ export function getIntakeAccessDenial(
   return null;
 }
 
-export function canEditIntake(session: AssessmentSessionRecord): boolean {
+export function canEditIntake(session: IntakeAccessFields): boolean {
   return session.status === "DRAFT" && !getIntakeAccessDenial(session);
 }
 
-export function hasConsent(session: AssessmentSessionRecord): boolean {
+export function hasConsent(
+  session: Pick<ClientIntakeDTO, "consentAcceptedAt"> | IntakeAccessFields,
+): boolean {
   return Boolean(session.consentAcceptedAt);
 }

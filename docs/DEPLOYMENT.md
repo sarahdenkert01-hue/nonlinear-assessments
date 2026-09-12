@@ -53,3 +53,8 @@ npx prisma migrate dev --name init
 - Client intake uses unguessable tokens; revoke links when no longer needed.
 - Consent is recorded with timestamp before any answers are saved.
 - Audit log records clinician and client actions per session.
+- **Clerk clinician access (required for production):** In the Clerk Dashboard →
+  [Restrictions](https://dashboard.clerk.com/~/user-authentication/restrictions), set
+  sign-up mode to **Restricted** (invite-only) or disable public sign-ups. Do **not** leave
+  sign-ups public — any new Clerk user becomes a clinician workspace identity in this app.
+  App UI no longer offers self-service registration; Dashboard restriction is the hard gate.

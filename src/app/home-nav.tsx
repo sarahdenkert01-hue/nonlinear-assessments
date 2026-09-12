@@ -1,6 +1,6 @@
 "use client";
 
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-provider";
 
@@ -9,16 +9,11 @@ export function HomeNav() {
     <nav className="mt-10 flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <Show when="signed-out">
-          <SignInButton mode="modal">
+          <SignInButton mode="modal" forceRedirectUrl="/dashboard" withSignUp={false}>
             <button type="button" className="ui-btn ui-btn-primary px-5 py-2.5">
               Sign in
             </button>
           </SignInButton>
-          <SignUpButton mode="modal">
-            <button type="button" className="ui-btn ui-btn-secondary px-5 py-2.5">
-              Create account
-            </button>
-          </SignUpButton>
         </Show>
         <Show when="signed-in">
           <UserButton />

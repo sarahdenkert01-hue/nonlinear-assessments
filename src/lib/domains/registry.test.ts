@@ -23,14 +23,32 @@ describe("domain registry", () => {
   it("maps executive themes to executive-function", () => {
     expect(getDomainsForTheme("executive-dysfunction")).toContain("executive-function");
     expect(getDomainsForTheme("task-paralysis")).toContain("executive-function");
+    expect(getDomainsForTheme("executive-functioning-activation")).toEqual([
+      "executive-function",
+      "attention-regulation",
+    ]);
+    expect(getDomainsForTheme("task-initiation-state-dependence")[0]).toBe(
+      "executive-function",
+    );
+    expect(getDomainsForTheme("switching-engagement-inertia")).toEqual([
+      "executive-function",
+      "attention-regulation",
+    ]);
   });
 
-  it("adds functional-impact as secondary for selected themes", () => {
+  it("maps functional-inconsistency primarily to executive-function with secondaries", () => {
     expect(getDomainsForTheme("functional-inconsistency")).toEqual([
+      "executive-function",
       "attention-regulation",
       "functional-impact",
     ]);
-    expect(getDomainsForTheme("shutdown-collapse")).toContain("functional-impact");
+  });
+
+  it("adds burnout/sensory secondaries for task-initiation-state-dependence", () => {
+    const domains = getDomainsForTheme("task-initiation-state-dependence");
+    expect(domains).toContain("burnout-collapse");
+    expect(domains).toContain("sensory-processing");
+    expect(domains).toContain("attention-regulation");
   });
 
   it("preserves theme ids — domains are separate from finding codes", () => {

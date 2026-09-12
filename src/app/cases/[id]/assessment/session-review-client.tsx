@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ReportPanel,
   requestSessionReport,
+  resolveQ62AcquiredEfContext,
   type AssessmentReportResult,
 } from "@/features/assessments";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
@@ -24,6 +25,15 @@ import "@/features/assessments/components/assessment.css";
 
 type PersistStatus = "idle" | "saving" | "saved" | "error";
 type ReviewTab = "responses" | "findings" | "report";
+
+function q62AnswerFromReview(review: EpisodeResponseReview): string | undefined {
+  for (const mod of review.modules) {
+    if (mod.moduleKey !== "nonlinear-screener") continue;
+    const item = mod.items.find((i) => i.itemId === "q62");
+    if (item) return item.answer;
+  }
+  return undefined;
+}
 
 export function SessionAssessmentReview({
   session: initialSession,
@@ -54,6 +64,11 @@ export function SessionAssessmentReview({
     const screener = responseReview.modules.find((m) => m.moduleKey === "nonlinear-screener");
     return screener?.answeredCount ?? Object.keys(session.answers ?? {}).length;
   }, [responseReview.modules, session.answers]);
+
+  const acquiredEfContext = useMemo(
+    () => resolveQ62AcquiredEfContext(q62AnswerFromReview(responseReview)),
+    [responseReview],
+  );
 
   const persistReview = useDebouncedCallback(
     async (payload: { clinicianNotes?: string; reportDraft?: string }) => {
@@ -273,6 +288,7 @@ export function SessionAssessmentReview({
           onExportReport={handleExportReport}
           showReportSection={false}
           screenerAnsweredCount={screenerAnsweredCount}
+          acquiredEfContext={acquiredEfContext}
         />
       )}
 

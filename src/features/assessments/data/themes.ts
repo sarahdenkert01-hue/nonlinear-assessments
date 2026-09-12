@@ -2,6 +2,8 @@ import type { Theme } from "../types";
 
 export const THEMES: Theme[] = [
   { id: "masking", label: "Masking", category: "Autism", sensitivity: "high", triggerMode: "single" },
+  // Legacy ADHD-coded EF themes: retained for clinician include + historical findings.
+  // Initiation items no longer map here so algorithm does not over-weight ADHD from q07/q10 alone.
   { id: "executive-dysfunction", label: "Executive Dysfunction", category: "ADHD", sensitivity: "convergence", triggerMode: "2of3" },
   { id: "sensory-dysregulation", label: "Sensory Dysregulation", category: "Autism", sensitivity: "convergence", triggerMode: "2of3" },
   { id: "neurodivergent-burnout", label: "Neurodivergent Burnout", category: "Both", sensitivity: "convergence", triggerMode: "2of3" },
@@ -23,10 +25,32 @@ export const THEMES: Theme[] = [
   { id: "emotional-suppression", label: "Emotional Suppression & Compartmentalization", category: "Both", sensitivity: "convergence", triggerMode: "2of3" },
   { id: "burnout-recovery", label: "Burnout Recovery Impairment", category: "Both", sensitivity: "convergence", triggerMode: "2of3" },
   { id: "cognitive-overload", label: "Cognitive Overload & Mental Fatigue", category: "Both", sensitivity: "convergence", triggerMode: "2of3" },
-  { id: "functional-inconsistency", label: "Functional Inconsistency", category: "ADHD", sensitivity: "convergence", triggerMode: "2of3" },
+  { id: "functional-inconsistency", label: "Functional Inconsistency", category: "Both", sensitivity: "convergence", triggerMode: "2of3" },
   { id: "chronic-shame", label: "Chronic Shame & Internalized Defectiveness", category: "Both", sensitivity: "high", triggerMode: "single" },
   { id: "emotional-flooding", label: "Emotional Flooding & Recovery Difficulty", category: "Both", sensitivity: "convergence", triggerMode: "2of3" },
   { id: "identity-fragmentation", label: "Identity Fragmentation", category: "Both", sensitivity: "high", triggerMode: "single" },
+  // Descriptive EF / activation themes (Both) — preferred algorithmic targets for q50–q61.
+  {
+    id: "executive-functioning-activation",
+    label: "Executive Functioning & Activation",
+    category: "Both",
+    sensitivity: "convergence",
+    triggerMode: "2of3",
+  },
+  {
+    id: "task-initiation-state-dependence",
+    label: "Task Initiation & State Dependence",
+    category: "Both",
+    sensitivity: "convergence",
+    triggerMode: "2of3",
+  },
+  {
+    id: "switching-engagement-inertia",
+    label: "Switching & Engagement Inertia",
+    category: "Both",
+    sensitivity: "convergence",
+    triggerMode: "2of3",
+  },
 ];
 
 const themeById = new Map(THEMES.map((t) => [t.id, t]));

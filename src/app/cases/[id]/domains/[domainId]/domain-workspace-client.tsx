@@ -14,6 +14,8 @@ import {
 import { flushBeforeNavigate } from "@/lib/domains/manual-note-nav";
 import type { ClinicalFormulationDraft, ClinicalQuestionPrompt, DomainDetail, DomainSummary } from "@/lib/domains/types";
 import { createQuestionPrompt } from "@/lib/domains/clinical-questions";
+import type { Q62AcquiredEfContext } from "@/features/assessments";
+import { AcquiredEfContextBanner } from "@/components/acquired-ef-context-banner";
 import "@/features/assessments/components/assessment.css";
 import "../domains.css";
 import { DomainStatusSidebar, type WorkspaceStage } from "./domain-status-sidebar";
@@ -56,10 +58,13 @@ export function DomainWorkspaceClient({
   episodeId,
   initialDomain,
   allDomains,
+  acquiredEfContext = null,
 }: {
   episodeId: string;
   initialDomain: DomainDetail;
   allDomains: DomainSummary[];
+  /** Non-scored q62 context — only passed for executive-function domain. */
+  acquiredEfContext?: Q62AcquiredEfContext | null;
 }) {
   const router = useRouter();
   const [domain, setDomain] = useState(initialDomain);
@@ -485,6 +490,10 @@ export function DomainWorkspaceClient({
             </div>
           </div>
         </header>
+
+        {acquiredEfContext && domain.domainId === "executive-function" ? (
+          <AcquiredEfContextBanner context={acquiredEfContext} />
+        ) : null}
 
         <div className="dm-wrap">
           {error && <div className="assessment-alert">{error}</div>}

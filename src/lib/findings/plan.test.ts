@@ -34,6 +34,9 @@ describe("planFindings — parity with legacy theme inclusion", () => {
   it("matches for flagged themes with no overrides", () => {
     const answers = { q01: "Often", q07: "Often", q10: "Very Often" };
     expect(includedCodesFromPlan(answers)).toEqual(includedCodesFromLegacy(answers));
+    expect(includedCodesFromPlan(answers)).toContain("task-initiation-state-dependence");
+    expect(includedCodesFromPlan(answers)).not.toContain("executive-dysfunction");
+    expect(includedCodesFromPlan(answers)).not.toContain("task-paralysis");
   });
 
   it("matches when a clinician excludes a flagged theme", () => {

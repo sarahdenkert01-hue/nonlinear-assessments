@@ -6,14 +6,18 @@ import {
 } from "./screener-required";
 
 describe("screener required items", () => {
-  it("requires scored frequency/agreement items and excludes open-text q47–q49", () => {
+  it("requires scored frequency/agreement items including q50–q62 and excludes open-text q47–q49", () => {
     const required = requiredScreenerItemIds();
     expect(required).toContain("q01");
     expect(required).toContain("q46");
+    expect(required).toContain("q50");
+    expect(required).toContain("q61");
+    expect(required).toContain("q62");
     expect(required).not.toContain("q47");
     expect(required).not.toContain("q48");
     expect(required).not.toContain("q49");
-    expect(required).toHaveLength(46);
+    // 46 original scored + 13 new (q50–q62)
+    expect(required).toHaveLength(59);
   });
 
   it("merges incoming answers over stored answers without dropping omitted keys", () => {
@@ -34,8 +38,10 @@ describe("screener required items", () => {
       q47: "open text only",
     });
     expect(missing).toContain("q02");
+    expect(missing).toContain("q50");
+    expect(missing).toContain("q62");
     expect(missing).not.toContain("q01");
-    expect(missing.length).toBe(45);
+    expect(missing.length).toBe(58);
   });
 
   it("accepts a complete scored set even when open items are blank", () => {

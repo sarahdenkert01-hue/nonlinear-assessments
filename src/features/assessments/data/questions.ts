@@ -16,7 +16,7 @@ export const AGREEMENT_OPTIONS = [
   "Strongly agree",
 ] as const;
 
-/** Valid for frequency and agreement scales — never triggers clinical flags. */
+/** Valid for frequency and agreement scales - never triggers clinical flags. */
 export const NOT_SURE_OPTION = "Not sure" as const;
 
 export type FrequencyOption = (typeof FREQUENCY_OPTIONS)[number];
@@ -93,7 +93,7 @@ export const QUESTIONS: QuestionItem[] = [
     id: "q07",
     text: "I struggle to start tasks even when I genuinely want to do them and know how.",
     format: "frequency",
-    themes: ["task-paralysis", "executive-dysfunction"],
+    themes: ["task-initiation-state-dependence"],
     weight: "primary",
     flag: { frequency: ["Often", "Very Often"] },
   },
@@ -102,7 +102,7 @@ export const QUESTIONS: QuestionItem[] = [
     id: "q08",
     text: "I have difficulty holding multiple pieces of information in mind at once while working.",
     format: "frequency",
-    themes: ["executive-dysfunction", "cognitive-overload"],
+    themes: ["executive-functioning-activation", "cognitive-overload"],
     weight: "contributing",
     flag: { frequency: ["Often", "Very Often"] },
   },
@@ -120,7 +120,7 @@ export const QUESTIONS: QuestionItem[] = [
     id: "q10",
     text: "I frequently know what I need to do but feel completely unable to make myself do it.",
     format: "frequency",
-    themes: ["task-paralysis", "executive-dysfunction"],
+    themes: ["task-initiation-state-dependence"],
     weight: "primary",
     flag: { frequency: ["Often", "Very Often"] },
   },
@@ -159,6 +159,125 @@ export const QUESTIONS: QuestionItem[] = [
     themes: ["perfectionistic-compensation", "chronic-overcompensation"],
     weight: "contributing",
     flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q50",
+    text: "I have difficulty shifting from one task or activity to another, even when I know it's time to move on.",
+    format: "frequency",
+    themes: ["switching-engagement-inertia"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q51",
+    text: "Once I'm absorbed in something, I can have a hard time stopping-even to eat, use the bathroom, go to bed, or do something important.",
+    format: "frequency",
+    themes: ["switching-engagement-inertia"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q52",
+    text: "Sometimes I know exactly what I want or need to do, but it feels like my brain or body won't make the transition into doing it.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q53",
+    text: "If I'm interrupted or have to stop something before I'm finished, it can be very difficult to get back into it.",
+    format: "frequency",
+    themes: ["switching-engagement-inertia"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q54",
+    text: "I intend to do something later but forget to actually do it unless something reminds me at the right time.",
+    format: "frequency",
+    themes: ["executive-functioning-activation"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q55",
+    text: "I can understand what needs to get done but struggle to figure out the steps or what order to do them in.",
+    format: "frequency",
+    themes: ["executive-functioning-activation"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q56",
+    text: "Even when I know some things are more important, I struggle to make my attention or actions follow those priorities.",
+    format: "frequency",
+    themes: ["executive-functioning-activation"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q57",
+    text: "I lose track of how much time has passed or have difficulty estimating how long things will take.",
+    format: "frequency",
+    themes: ["executive-functioning-activation"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q58",
+    text: "Tasks become much easier to start when they are interesting, new, urgent, or have an immediate consequence.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q59",
+    text: "Having another person present, expecting something from me, or helping me begin can make a task much easier to start.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q60",
+    text: "Things I can normally do can become much harder to initiate when I'm tired, overwhelmed, overstimulated, stressed, or recovering from demands.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence", "functional-inconsistency"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q61",
+    text: "I can sometimes do something easily but be unable to access that same ability at another time, even though I still know how to do it.",
+    format: "frequency",
+    themes: ["functional-inconsistency"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    // Differential context only: scored for completeness, never mapped to theme hits.
+    // Endorsement should prompt clinician differentials (acquired/state causes), not ADHD/Autism findings.
+    id: "q62",
+    text: "My difficulties with starting, organizing, remembering, or completing tasks became significantly worse after something changed in my life, such as chronic pain, illness, trauma, burnout, sleep problems, or a major increase in stress.",
+    format: "agreement",
+    themes: [],
+    weight: "context",
+    flag: { agreement: ["Agree", "Strongly agree"] },
   },
 
   {
@@ -427,7 +546,7 @@ export const QUESTIONS: QuestionItem[] = [
 
   {
     id: "q41",
-    text: "I struggle to know what I actually want, feel, or prefer — separate from what others expect of me.",
+    text: "I struggle to know what I actually want, feel, or prefer - separate from what others expect of me.",
     format: "frequency",
     themes: ["identity-suppression", "identity-confusion", "emotional-suppression"],
     weight: "contributing",

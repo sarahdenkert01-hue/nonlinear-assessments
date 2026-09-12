@@ -5,6 +5,12 @@ const THEME_FRAMING: Record<string, string> = {
     "effortful suppression or adjustment of natural presentation in social and professional settings",
   "executive-dysfunction":
     "difficulty initiating, sequencing, and sustaining goal-directed behavior despite motivation",
+  "executive-functioning-activation":
+    "difficulty with working memory, sequencing, prioritization, prospective memory, time regulation, and/or carrying intended actions through to completion",
+  "task-initiation-state-dependence":
+    "variable access to task initiation, with functioning influenced by factors such as urgency, interest, external structure, fatigue, overwhelm, sensory load, or available support",
+  "switching-engagement-inertia":
+    "difficulty shifting between activities, disengaging once absorbed, or resuming after interruption, suggesting clinically meaningful transition and engagement-regulation difficulties",
   "sensory-dysregulation":
     "heightened or unpredictable sensory responses that drain capacity for other demands",
   "neurodivergent-burnout":
@@ -46,7 +52,7 @@ const THEME_FRAMING: Record<string, string> = {
   "cognitive-overload":
     "mental fatigue when demands exceed available processing bandwidth",
   "functional-inconsistency":
-    "marked variability in performance or capacity across days or contexts",
+    "substantial variability in access to everyday skills and functioning across contexts or states",
   "chronic-shame":
     "persistent self-criticism and fear of being fundamentally flawed",
   "emotional-flooding":

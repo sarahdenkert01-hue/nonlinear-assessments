@@ -103,9 +103,12 @@ const domainById = new Map(CLINICAL_DOMAINS.map((d) => [d.id, d]));
 const PRIMARY_THEME_TO_DOMAIN: Record<string, string> = {
   "executive-dysfunction": "executive-function",
   "task-paralysis": "executive-function",
+  "executive-functioning-activation": "executive-function",
+  "task-initiation-state-dependence": "executive-function",
+  "switching-engagement-inertia": "executive-function",
   "cognitive-overload": "executive-function",
   "perfectionistic-compensation": "executive-function",
-  "functional-inconsistency": "attention-regulation",
+  "functional-inconsistency": "executive-function",
   "rejection-sensitivity": "social-communication",
   "emotional-dysregulation": "emotional-regulation",
   "emotional-flooding": "emotional-regulation",
@@ -131,7 +134,14 @@ const PRIMARY_THEME_TO_DOMAIN: Record<string, string> = {
 
 /** Additional domains a theme may contribute evidence to (e.g. functional impact). */
 const SECONDARY_THEME_TO_DOMAINS: Record<string, string[]> = {
-  "functional-inconsistency": ["functional-impact"],
+  "functional-inconsistency": ["attention-regulation", "functional-impact"],
+  "task-initiation-state-dependence": [
+    "attention-regulation",
+    "burnout-collapse",
+    "sensory-processing",
+  ],
+  "switching-engagement-inertia": ["attention-regulation"],
+  "executive-functioning-activation": ["attention-regulation"],
   "shutdown-collapse": ["functional-impact"],
   "burnout-recovery": ["functional-impact"],
   "neurodivergent-burnout": ["functional-impact"],

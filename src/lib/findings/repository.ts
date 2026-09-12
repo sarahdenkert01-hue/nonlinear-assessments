@@ -84,6 +84,13 @@ async function loadEpisode(episodeId: string): Promise<EpisodeWithResponses | nu
 // Generate findings from the algorithm scores the first time an episode is reviewed. Idempotent:
 // does nothing if findings already exist. Prior clinician include/exclude overrides (from the
 // legacy `overrides` JSON) are translated into finding statuses so nothing is lost.
+//
+// Episode behavior after question-bank expansions (e.g. q50–q62 / new EF themes):
+// - New episodes: use the current QUESTIONS/THEMES when findings are first generated.
+// - In-progress / not-yet-reviewed: first ensureFindingsForEpisode call uses the new bank.
+// - Episodes that already have Finding rows: NOT regenerated here — clinician-reviewed
+//   statuses/evidence are preserved. A separate recompute feature would be required to
+//   backfill new themes without overwriting ACCEPTED/EDITED/EXCLUDED work.
 export async function ensureFindingsForEpisode(episodeId: string): Promise<void> {
   const existing = await prisma.finding.count({ where: { episodeId } });
   if (existing > 0) return;

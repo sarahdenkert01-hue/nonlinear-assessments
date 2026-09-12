@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
-import { getClientEpisodeByToken, getSessionByToken } from "@/lib/episodes";
+import {
+  getClientEpisodeByToken,
+  getSessionByToken,
+  toClientIntakeDTO,
+} from "@/lib/episodes";
 import { IntakeBlocked } from "./intake-blocked";
 import { IntakeClient } from "./intake-client";
 import {
@@ -22,7 +26,9 @@ export default async function IntakePage({ params }: PageProps) {
     const episode = await getClientEpisodeByToken(token);
     if (!episode) notFound();
 
-    return <IntakeClient session={session!} episode={episode} />;
+    return (
+      <IntakeClient session={toClientIntakeDTO(session!)} episode={episode} />
+    );
   } catch (err) {
     const isDb = isDatabaseConnectivityError(err);
     console.error("[intake] failed to load episode", isDb ? "database_unreachable" : "unexpected");

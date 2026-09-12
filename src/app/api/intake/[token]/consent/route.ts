@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { jsonError, jsonNotFound } from "@/lib/api";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
-import { acceptSessionConsent, getSessionByToken } from "@/lib/episodes";
+import {
+  acceptSessionConsent,
+  getSessionByToken,
+  toClientIntakeDTO,
+} from "@/lib/episodes";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
@@ -19,7 +23,7 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   if (existing.consentAcceptedAt) {
-    return NextResponse.json({ session: existing });
+    return NextResponse.json({ session: toClientIntakeDTO(existing) });
   }
 
   if (existing.status !== "DRAFT") {
@@ -29,5 +33,5 @@ export async function POST(_request: Request, context: RouteContext) {
   const session = await acceptSessionConsent(token);
   if (!session) return jsonError("Could not record consent", 409);
 
-  return NextResponse.json({ session });
+  return NextResponse.json({ session: toClientIntakeDTO(session) });
 }

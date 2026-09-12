@@ -6,7 +6,9 @@ import {
   THEMES,
   requestSessionReport,
   type AssessmentReportResult,
+  type Q62AcquiredEfContext,
 } from "@/features/assessments";
+import { AcquiredEfContextBanner } from "@/components/acquired-ef-context-banner";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import type {
   Confidence,
@@ -32,6 +34,8 @@ interface FindingsReviewProps {
   showReportSection?: boolean;
   /** Helps explain empty findings when client answers exist but none flagged. */
   screenerAnsweredCount?: number;
+  /** Non-scored q62 context banner (Agree / Strongly agree only). */
+  acquiredEfContext?: Q62AcquiredEfContext | null;
 }
 
 const CONFIDENCE_LEVELS: { value: Confidence | null; label: string; title: string }[] = [
@@ -120,6 +124,7 @@ export function FindingsReview({
   onExportReport,
   showReportSection = true,
   screenerAnsweredCount = 0,
+  acquiredEfContext = null,
 }: FindingsReviewProps) {
   const [findings, setFindings] = useState<FindingRecord[]>(() =>
     orderFindings(initialFindings),
@@ -414,6 +419,10 @@ export function FindingsReview({
               : "Review the evidence, then decide what belongs in the report. The tool proposes; you decide."}
           </p>
         </header>
+
+        {acquiredEfContext ? (
+          <AcquiredEfContextBanner context={acquiredEfContext} />
+        ) : null}
 
         <div className="fr-wrap">
           {totalCount > 0 && (

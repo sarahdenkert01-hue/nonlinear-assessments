@@ -23,6 +23,16 @@ export {
 } from "./lib/reflections";
 export type { ChapterReflection } from "./lib/reflections";
 export {
+  resolveQ62AcquiredEfContext,
+  resolveQ62AcquiredEfContextFromAnswers,
+  q62StrengthVerb,
+  q62ThemeIds,
+} from "./lib/q62-context";
+export type {
+  Q62AcquiredEfContext,
+  Q62EndorsementStrength,
+} from "./lib/q62-context";
+export {
   requestSessionReport,
   requestDevPreviewReport,
 } from "./lib/report-api";

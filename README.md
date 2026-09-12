@@ -33,8 +33,10 @@ CLERK_SECRET_KEY=sk_test_...
 
 3. In Clerk Dashboard → **Paths**, set:
    - Sign-in URL: `/sign-in`
-   - Sign-up URL: `/sign-up`
+   - Sign-up URL: `/sign-up` (app redirects this to sign-in; no public registration UI)
    - After sign-in: `/dashboard`
+4. In Clerk Dashboard → **Restrictions**, set sign-up mode to **Restricted** (invite-only)
+   for production. This app treats every Clerk user as a clinician — do not leave public sign-ups on.
 
 ### 3. Optional: LLM report drafting
 

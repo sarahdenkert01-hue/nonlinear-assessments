@@ -5,6 +5,7 @@ import { jsonError, jsonNotFound } from "@/lib/api";
 import { getIntakeAccessDenial } from "@/lib/intake-access";
 import {
   getSessionByToken,
+  toClientIntakeDTO,
   updateSessionAnswers,
 } from "@/lib/episodes";
 
@@ -55,7 +56,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       actorType: "client",
     });
 
-    return NextResponse.json({ session });
+    return NextResponse.json({ session: toClientIntakeDTO(session) });
   } catch {
     return jsonError("Failed to save answers", 500);
   }
