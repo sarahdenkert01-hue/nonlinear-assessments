@@ -16,6 +16,8 @@ export const CHAPTER_REFLECTION_PROMPTS = [
   REFLECTION_PROMPT_VARIANTS[0],
   REFLECTION_PROMPT_VARIANTS[1],
   REFLECTION_PROMPT_VARIANTS[2],
+  REFLECTION_PROMPT_VARIANTS[0],
+  REFLECTION_PROMPT_VARIANTS[1],
 ] as const;
 
 export function getChapterReflectionPrompt(chapterIndex: number): string {

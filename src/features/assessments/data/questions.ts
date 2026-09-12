@@ -90,109 +90,10 @@ export const QUESTIONS: QuestionItem[] = [
   },
 
   {
-    id: "q07",
-    text: "I struggle to start tasks even when I genuinely want to do them and know how.",
-    format: "frequency",
-    themes: ["task-initiation-state-dependence"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
     id: "q08",
     text: "I have difficulty holding multiple pieces of information in mind at once while working.",
     format: "frequency",
     themes: ["executive-functioning-activation", "cognitive-overload"],
-    weight: "contributing",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q09",
-    text: "My ability to function varies drastically from day to day in ways I can't always predict or control.",
-    format: "frequency",
-    themes: ["functional-inconsistency", "neurodivergent-burnout", "nervous-system-dysregulation"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q10",
-    text: "I frequently know what I need to do but feel completely unable to make myself do it.",
-    format: "frequency",
-    themes: ["task-initiation-state-dependence"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q11",
-    text: "By the end of the day my brain feels full, like I have run out of capacity to process any more.",
-    format: "frequency",
-    themes: ["cognitive-overload", "neurodivergent-burnout", "masking-fatigue"],
-    weight: "contributing",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q12",
-    text: "I have periods where I seem highly productive, followed by crashes where I can barely function.",
-    format: "frequency",
-    themes: ["functional-inconsistency", "burnout-recovery", "neurodivergent-burnout"],
-    weight: "contributing",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q13",
-    text: "I hold myself to standards I would never apply to other people, and feel deeply ashamed when I fall short.",
-    format: "agreement",
-    themes: ["perfectionistic-compensation", "chronic-shame"],
-    weight: "primary",
-    flag: { agreement: ["Agree", "Strongly agree"] },
-  },
-
-  {
-    id: "q14",
-    text: "I over-prepare, over-research, or work much harder than necessary to produce results others achieve with less effort.",
-    format: "frequency",
-    themes: ["perfectionistic-compensation", "chronic-overcompensation"],
-    weight: "contributing",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q50",
-    text: "I have difficulty shifting from one task or activity to another, even when I know it's time to move on.",
-    format: "frequency",
-    themes: ["switching-engagement-inertia"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q51",
-    text: "Once I'm absorbed in something, I can have a hard time stopping-even to eat, use the bathroom, go to bed, or do something important.",
-    format: "frequency",
-    themes: ["switching-engagement-inertia"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q52",
-    text: "Sometimes I know exactly what I want or need to do, but it feels like my brain or body won't make the transition into doing it.",
-    format: "frequency",
-    themes: ["task-initiation-state-dependence"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
-    id: "q53",
-    text: "If I'm interrupted or have to stop something before I'm finished, it can be very difficult to get back into it.",
-    format: "frequency",
-    themes: ["switching-engagement-inertia"],
     weight: "contributing",
     flag: { frequency: ["Often", "Very Often"] },
   },
@@ -234,6 +135,66 @@ export const QUESTIONS: QuestionItem[] = [
   },
 
   {
+    id: "q09",
+    text: "My ability to function varies drastically from day to day in ways I can't always predict or control.",
+    format: "frequency",
+    themes: ["functional-inconsistency", "neurodivergent-burnout", "nervous-system-dysregulation"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q12",
+    text: "I have periods where I seem highly productive, followed by crashes where I can barely function.",
+    format: "frequency",
+    themes: ["functional-inconsistency", "burnout-recovery", "neurodivergent-burnout"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q61",
+    text: "I can sometimes do something easily but be unable to access that same ability at another time, even though I still know how to do it.",
+    format: "frequency",
+    themes: ["functional-inconsistency"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    section: "Getting started & keeping momentum",
+    sectionDesc:
+      "These questions are about getting yourself into action, what helps things click, and how your ability to start tasks can change depending on the situation.",
+  },
+
+  {
+    id: "q07",
+    text: "I struggle to start tasks even when I genuinely want to do them and know how.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q10",
+    text: "I frequently know what I need to do but feel completely unable to make myself do it.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q52",
+    text: "Sometimes I know exactly what I want or need to do, but it feels like my brain or body won't make the transition into doing it.",
+    format: "frequency",
+    themes: ["task-initiation-state-dependence"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
     id: "q58",
     text: "Tasks become much easier to start when they are interesting, new, urgent, or have an immediate consequence.",
     format: "frequency",
@@ -261,15 +222,6 @@ export const QUESTIONS: QuestionItem[] = [
   },
 
   {
-    id: "q61",
-    text: "I can sometimes do something easily but be unable to access that same ability at another time, even though I still know how to do it.",
-    format: "frequency",
-    themes: ["functional-inconsistency"],
-    weight: "primary",
-    flag: { frequency: ["Often", "Very Often"] },
-  },
-
-  {
     // Differential context only: scored for completeness, never mapped to theme hits.
     // Endorsement should prompt clinician differentials (acquired/state causes), not ADHD/Autism findings.
     id: "q62",
@@ -278,6 +230,39 @@ export const QUESTIONS: QuestionItem[] = [
     themes: [],
     weight: "context",
     flag: { agreement: ["Agree", "Strongly agree"] },
+  },
+
+  {
+    section: "Stopping, switching & getting unstuck",
+    sectionDesc:
+      "These questions are about shifting between activities, stopping once you're engaged, and getting moving again after interruptions.",
+  },
+
+  {
+    id: "q50",
+    text: "I have difficulty shifting from one task or activity to another, even when I know it's time to move on.",
+    format: "frequency",
+    themes: ["switching-engagement-inertia"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q51",
+    text: "Once I'm absorbed in something, I can have a hard time stopping-even to eat, use the bathroom, go to bed, or do something important.",
+    format: "frequency",
+    themes: ["switching-engagement-inertia"],
+    weight: "primary",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
+    id: "q53",
+    text: "If I'm interrupted or have to stop something before I'm finished, it can be very difficult to get back into it.",
+    format: "frequency",
+    themes: ["switching-engagement-inertia"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
   },
 
   {
@@ -467,6 +452,15 @@ export const QUESTIONS: QuestionItem[] = [
   },
 
   {
+    id: "q11",
+    text: "By the end of the day my brain feels full, like I have run out of capacity to process any more.",
+    format: "frequency",
+    themes: ["cognitive-overload", "neurodivergent-burnout", "masking-fatigue"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
+  },
+
+  {
     id: "q33",
     text: "There have been periods in my life where I have lost the ability to do things I previously managed and have not fully recovered.",
     format: "agreement",
@@ -560,6 +554,24 @@ export const QUESTIONS: QuestionItem[] = [
     themes: ["chronic-shame", "identity-suppression", "chronic-overcompensation"],
     weight: "primary",
     flag: { agreement: ["Agree", "Strongly agree"] },
+  },
+
+  {
+    id: "q13",
+    text: "I hold myself to standards I would never apply to other people, and feel deeply ashamed when I fall short.",
+    format: "agreement",
+    themes: ["perfectionistic-compensation", "chronic-shame"],
+    weight: "primary",
+    flag: { agreement: ["Agree", "Strongly agree"] },
+  },
+
+  {
+    id: "q14",
+    text: "I over-prepare, over-research, or work much harder than necessary to produce results others achieve with less effort.",
+    format: "frequency",
+    themes: ["perfectionistic-compensation", "chronic-overcompensation"],
+    weight: "contributing",
+    flag: { frequency: ["Often", "Very Often"] },
   },
 
   {

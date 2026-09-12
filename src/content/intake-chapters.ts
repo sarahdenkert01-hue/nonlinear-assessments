@@ -1,8 +1,7 @@
 /** Encouraging chapter copy for the client exploration flow. Order matches assessment sections. */
 
+/** Overall expected duration for the full screener (same question set regardless of chapter count). */
 export const INTAKE_TOTAL_MINUTES = 25;
-
-export const INTAKE_MINUTES_PER_CHAPTER = 3;
 
 export type ChapterContent = {
   /** Quiet progress line — not a headline. */
@@ -20,11 +19,27 @@ export const CHAPTER_CONTENT: ChapterContent[] = [
     ],
   },
   {
-    progressMessage: "Attention and mental energy",
+    progressMessage: "Thinking and getting things done",
     introParagraphs: [
-      "Every brain has its own rhythm.",
-      "Some days ideas arrive faster than actions. Some tasks feel impossible until suddenly they aren't.",
-      "This chapter explores how your attention moves — not whether you're productive enough.",
+      "Every brain has its own rhythm for holding information, ordering steps, and sensing time.",
+      "Some days ideas arrive faster than actions. Capacity can shift from one day to the next.",
+      "This chapter explores how you manage tasks and mental energy — not whether you're productive enough.",
+    ],
+  },
+  {
+    progressMessage: "Getting started & keeping momentum",
+    introParagraphs: [
+      "Starting is its own kind of work.",
+      "What unlocks action for you — interest, urgency, another person, rest — can change with the situation.",
+      "These questions stay with initiation and momentum, without assuming a single explanation.",
+    ],
+  },
+  {
+    progressMessage: "Stopping, switching & getting unstuck",
+    introParagraphs: [
+      "Sometimes the hard part is not beginning, but shifting or stopping once you're in something.",
+      "Interruptions can make it hard to find the thread again.",
+      "This short chapter looks at transitions between activities.",
     ],
   },
   {
@@ -82,14 +97,32 @@ export function getChapterContent(sectionIndex: number): ChapterContent {
   return CHAPTER_CONTENT[sectionIndex] ?? CHAPTER_CONTENT[0];
 }
 
-export function estimatedMinutesRemaining(
-  sectionIndex: number,
-  totalSections: number,
+/**
+ * Minutes for a stretch of questions, scaled to the full-assessment budget.
+ * Reorganizing the same items into more/fewer chapters does not change the estimate.
+ */
+export function estimatedMinutesForQuestionCount(
+  questionCount: number,
+  totalQuestions: number,
 ): number {
-  const remaining = Math.max(totalSections - sectionIndex, 1);
+  if (questionCount <= 0 || totalQuestions <= 0) return 1;
+  return Math.max(
+    1,
+    Math.round((questionCount / totalQuestions) * INTAKE_TOTAL_MINUTES),
+  );
+}
+
+/**
+ * Remaining-time estimate from unanswered questions still ahead in the flow
+ * (current question inclusive when `remainingQuestions` includes it).
+ */
+export function estimatedMinutesRemaining(
+  remainingQuestions: number,
+  totalQuestions: number = remainingQuestions,
+): number {
   return Math.min(
     INTAKE_TOTAL_MINUTES,
-    Math.max(remaining * INTAKE_MINUTES_PER_CHAPTER, INTAKE_MINUTES_PER_CHAPTER),
+    estimatedMinutesForQuestionCount(remainingQuestions, totalQuestions),
   );
 }
 

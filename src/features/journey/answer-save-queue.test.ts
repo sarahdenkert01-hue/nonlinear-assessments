@@ -92,8 +92,9 @@ describe("answer save queue", () => {
     expect(state.status).toBe("error");
     expect(state.failedItemIds).toEqual(["q12", "q13", "q15"]);
     expect(unsavedItemIdsForDisplay(state)).toEqual(["q12", "q13", "q15"]);
+    // Display numbers follow questionnaire presentation order (not q-id numbers).
     expect(formatUnsavedAnswersMessage(state.failedItemIds)).toBe(
-      "3 answers have not been saved: Questions 12, 13, and 15.",
+      "3 answers have not been saved: Questions 13, 25, and 54.",
     );
     expect(canSubmit(state)).toBe(false);
   });
@@ -171,10 +172,10 @@ describe("answer save queue", () => {
 
   it("formats singular and pair unsaved messages", () => {
     expect(formatUnsavedAnswersMessage(["q12"])).toBe(
-      "1 answer has not been saved: Question 12.",
+      "1 answer has not been saved: Question 13.",
     );
     expect(formatUnsavedAnswersMessage(["q13", "q12"])).toBe(
-      "2 answers have not been saved: Questions 12 and 13.",
+      "2 answers have not been saved: Questions 13 and 54.",
     );
   });
 });

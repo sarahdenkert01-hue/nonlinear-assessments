@@ -10,9 +10,9 @@ import {
   CHAPTER_CONTINUE_CTA,
   CHAPTER_INTRO_CTA,
   CHAPTER_PREVIOUS_CTA,
+  estimatedMinutesForQuestionCount,
   estimatedMinutesRemaining,
   getChapterContent,
-  INTAKE_MINUTES_PER_CHAPTER,
 } from "@/content/intake-chapters";
 import { getMicroValidation } from "@/content/intake-validations";
 import { AGREEMENT_OPTIONS, FREQUENCY_OPTIONS, NOT_SURE_OPTION } from "../data/questions";
@@ -338,8 +338,25 @@ export function AssessmentForm({
 
   const currentSection = sections[sectionIndex];
   const chapter = getChapterContent(sectionIndex);
-  const minutesLeft = estimatedMinutesRemaining(sectionIndex, sections.length);
   const questionsInSection = currentSection?.questions.length ?? 0;
+  const questionsCompletedBeforeSection = sections
+    .slice(0, sectionIndex)
+    .reduce((n, s) => n + s.questions.length, 0);
+  const progressedInSection =
+    sectionPhase === "confirm"
+      ? questionsInSection
+      : sectionPhase === "questions"
+        ? questionIndex
+        : 0;
+  const remainingQuestions = Math.max(
+    totalQuestions - questionsCompletedBeforeSection - progressedInSection,
+    0,
+  );
+  const minutesLeft = estimatedMinutesRemaining(remainingQuestions, totalQuestions);
+  const chapterMinutes = estimatedMinutesForQuestionCount(
+    questionsInSection,
+    totalQuestions,
+  );
   const singleQuestionMode = useChapterFlow && sectionPhase === "questions";
   const currentQuestion =
     singleQuestionMode && currentSection
@@ -692,7 +709,7 @@ export function AssessmentForm({
                   </p>
                 ))}
               </div>
-              <p className="assessment-chapter-time">About {INTAKE_MINUTES_PER_CHAPTER} minutes</p>
+              <p className="assessment-chapter-time">About {chapterMinutes} minutes</p>
             </div>
           )}
 

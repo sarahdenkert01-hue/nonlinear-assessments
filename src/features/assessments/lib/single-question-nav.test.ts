@@ -143,11 +143,12 @@ describe("leave / flush navigation", () => {
       dirtyItemIds: state.failedItemIds,
     });
     expect(decision.allowNavigation).toBe(false);
+    // Display numbers follow questionnaire presentation order (not q-id numbers).
     expect(decision.message).toBe(
-      "Questions 12, 13, and 15 have not been saved.",
+      "Questions 13, 25, and 54 have not been saved.",
     );
     expect(formatLeaveUnsavedMessage(state.failedItemIds)).toBe(
-      "Questions 12, 13, and 15 have not been saved.",
+      "Questions 13, 25, and 54 have not been saved.",
     );
   });
 
