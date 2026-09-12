@@ -15,6 +15,13 @@ import type {
   FindingRecord,
   FindingStatus,
 } from "@/lib/findings/types";
+import {
+  computeFindingsToolbarCounts,
+  isProposedFinding,
+  orderFindingsForReview,
+  selectVisibleFindings,
+  type FindingsFilterMode,
+} from "./findings-review-model";
 import "./findings-review.css";
 
 interface FindingsReviewProps {
@@ -61,10 +68,7 @@ function categoryBadgeClass(category: string | null): string {
 }
 
 function isProposed(f: FindingRecord): boolean {
-  return f.status === "PROPOSED";
-}
-function isIncluded(status: FindingStatus): boolean {
-  return status !== "EXCLUDED";
+  return isProposedFinding(f);
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -98,15 +102,7 @@ function evidenceStrength(finding: FindingRecord): {
 }
 
 function orderFindings(list: FindingRecord[]): FindingRecord[] {
-  const rank = (f: FindingRecord) =>
-    f.status === "PROPOSED" ? 0 : f.status === "EXCLUDED" ? 2 : 1;
-  const strengthRatio = (f: FindingRecord) =>
-    f.total > 0 ? f.hits / f.total : f.hits > 0 ? 1 : 0;
-  return [...list].sort((a, b) => {
-    if (rank(a) !== rank(b)) return rank(a) - rank(b);
-    if (strengthRatio(a) !== strengthRatio(b)) return strengthRatio(b) - strengthRatio(a);
-    return a.label.localeCompare(b.label);
-  });
+  return orderFindingsForReview(list);
 }
 
 export function FindingsReview({
@@ -132,7 +128,7 @@ export function FindingsReview({
   const [notes, setNotes] = useState(clinicianNotes);
   const [addCode, setAddCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [filterMode, setFilterMode] = useState<"all" | "undecided">("all");
+  const [filterMode, setFilterMode] = useState<FindingsFilterMode>("all");
   const [showHelp, setShowHelp] = useState(false);
   const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set());
   const [expandedAlt, setExpandedAlt] = useState<Set<string>>(new Set());
@@ -145,16 +141,44 @@ export function FindingsReview({
   const shortcutsBtnRef = useRef<HTMLButtonElement>(null);
   const shortcutsPopoverRef = useRef<HTMLDivElement>(null);
 
-  const totalCount = findings.length;
-  const needsReviewCount = findings.filter(isProposed).length;
-  const includedCount = findings.filter((f) => isIncluded(f.status)).length;
-  const excludedCount = findings.filter((f) => f.status === "EXCLUDED").length;
-  const reviewedCount = totalCount - needsReviewCount;
+  // RSC/client props can be stale relative to GET /findings (router cache, mid-generation
+  // page load). Toolbar + cards must follow the live episode finding set — never shrink
+  // back to a shorter stale prop payload after a successful refresh.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/episodes/${sessionId}/findings`, {
+          cache: "no-store",
+        });
+        const data = await parseApiResponse<{
+          findings?: FindingRecord[];
+          error?: string;
+        }>(res);
+        if (cancelled || !res.ok || !Array.isArray(data.findings)) return;
+        setFindings(orderFindings(data.findings));
+      } catch {
+        // Keep server-provided initialFindings if refresh fails.
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  const {
+    totalCount,
+    needsReviewCount,
+    includedCount,
+    excludedCount,
+    reviewedCount,
+  } = computeFindingsToolbarCounts(findings);
   const progressPct =
     totalCount > 0 ? Math.round((reviewedCount / totalCount) * 100) : 0;
 
   const visible = useMemo(
-    () => (filterMode === "undecided" ? findings.filter(isProposed) : findings),
+    () => selectVisibleFindings(findings, filterMode),
     [findings, filterMode],
   );
 

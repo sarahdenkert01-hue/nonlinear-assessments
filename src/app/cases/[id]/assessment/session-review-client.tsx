@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReportPanel,
   requestSessionReport,
@@ -48,7 +48,12 @@ export function SessionAssessmentReview({
   const [persistStatus, setPersistStatus] = useState<PersistStatus>("idle");
   const [markingReviewed, setMarkingReviewed] = useState(false);
   const [tab, setTab] = useState<ReviewTab>("responses");
+  const [findingsTabVisited, setFindingsTabVisited] = useState(false);
   const reportFinalized = Boolean(session.reportFinalizedAt);
+
+  useEffect(() => {
+    if (tab === "findings") setFindingsTabVisited(true);
+  }, [tab]);
 
   const confirmedFindingCount = useMemo(
     () => findings.filter((f) => f.status === "ACCEPTED" || f.status === "EDITED").length,
@@ -266,30 +271,32 @@ export function SessionAssessmentReview({
 
       {tab === "responses" && <ResponseReviewPanel review={responseReview} />}
 
-      {tab === "findings" && (
-        <FindingsReview
-          sessionId={session.id}
-          clientName={session.clientName ?? undefined}
-          initialFindings={findings}
-          clinicianNotes={session.clinicianNotes ?? ""}
-          reportDraft={session.reportDraft}
-          reportGeneratedAt={session.reportGeneratedAt}
-          reportFinalized={reportFinalized}
-          onNotesChange={handleNotesChange}
-          onReportDraftChange={handleReportDraftChange}
-          onReportGenerated={(report) => {
-            setSession((prev) => ({
-              ...prev,
-              reportDraft: report.draft,
-              reportGeneratedAt: report.generatedAt,
-            }));
-          }}
-          onFinalizeReport={handleFinalizeReport}
-          onExportReport={handleExportReport}
-          showReportSection={false}
-          screenerAnsweredCount={screenerAnsweredCount}
-          acquiredEfContext={acquiredEfContext}
-        />
+      {findingsTabVisited && (
+        <div hidden={tab !== "findings"}>
+          <FindingsReview
+            sessionId={session.id}
+            clientName={session.clientName ?? undefined}
+            initialFindings={findings}
+            clinicianNotes={session.clinicianNotes ?? ""}
+            reportDraft={session.reportDraft}
+            reportGeneratedAt={session.reportGeneratedAt}
+            reportFinalized={reportFinalized}
+            onNotesChange={handleNotesChange}
+            onReportDraftChange={handleReportDraftChange}
+            onReportGenerated={(report) => {
+              setSession((prev) => ({
+                ...prev,
+                reportDraft: report.draft,
+                reportGeneratedAt: report.generatedAt,
+              }));
+            }}
+            onFinalizeReport={handleFinalizeReport}
+            onExportReport={handleExportReport}
+            showReportSection={false}
+            screenerAnsweredCount={screenerAnsweredCount}
+            acquiredEfContext={acquiredEfContext}
+          />
+        </div>
       )}
 
       {tab === "report" && (
