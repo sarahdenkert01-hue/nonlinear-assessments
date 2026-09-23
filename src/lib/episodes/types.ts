@@ -69,6 +69,11 @@ export interface CreateSessionInput {
   clinicianId: string;
   clientId?: string;
   tokenExpiresInDays?: number;
+  /**
+   * Assignment package. Defaults to `"nonlinear"` (screener + life map + reflection).
+   * Use `"cat-q"` for a CAT-Q-only episode.
+   */
+  packageId?: "nonlinear" | "cat-q";
 }
 
 export interface ListSessionsQuery {

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import {
+  CatQModule,
   DevelopmentalLifeMapModule,
   GuidedReflectionModule,
   ScreenerModule,
@@ -47,6 +48,9 @@ export default async function IntakeModulePage({ params }: PageProps) {
       def?.renderer === "guided-reflection"
     ) {
       return <GuidedReflectionModule token={token} module={moduleRecord} />;
+    }
+    if (moduleKey === MODULE_KEYS.CAT_Q || def?.renderer === "cat-q-form") {
+      return <CatQModule token={token} module={moduleRecord} />;
     }
 
     notFound();

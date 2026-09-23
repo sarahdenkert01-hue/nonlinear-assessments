@@ -9,6 +9,20 @@ export {
   type ModuleRenderer,
 } from "./registry";
 export {
+  ASSIGNMENT_PACKAGES,
+  areRequiredModulesSubmitted,
+  filterModuleKeysToAdd,
+  getAddableStructuredMeasureKeys,
+  getAssignmentPackage,
+  getModulesForPackage,
+  isAssignmentPackageId,
+  isModuleRequiredForEpisode,
+  resolveTokenBearerModuleKey,
+  shouldUnlockEpisodeOnModuleSubmit,
+  type AssignmentPackage,
+  type AssignmentPackageId,
+} from "./assignment";
+export {
   GUIDED_REFLECTION_SECTIONS,
   parseGuidedReflectionData,
   validateGuidedReflectionData,

@@ -1,3 +1,4 @@
+import { CAT_Q_ITEM_IDS, isValidCatQLikert } from "@/features/cat-q";
 import { MODULE_KEYS, isKnownModuleKey } from "./registry";
 import {
   GUIDED_REFLECTION_SECTIONS,
@@ -22,6 +23,9 @@ export const MODULE_PAYLOAD_LIMITS = {
     maxTitleChars: 200,
     maxTagsPerEntry: 15,
     maxTagChars: 60,
+  },
+  catQ: {
+    maxKeys: 25,
   },
 } as const;
 
@@ -78,7 +82,46 @@ export function validateModulePayload(
   if (moduleKey === MODULE_KEYS.LIFE_MAP) {
     return validateLifeMapPayload(raw);
   }
+  if (moduleKey === MODULE_KEYS.CAT_Q) {
+    return validateCatQPayload(raw);
+  }
   return { ok: false, error: "Unknown module" };
+}
+
+const CAT_Q_KNOWN_IDS = new Set(CAT_Q_ITEM_IDS);
+
+/**
+ * Accept only known CAT-Q item ids with integer Likert values 1–7.
+ * Coerces numeric strings ("3") to integers so client autosave can send either form.
+ */
+function validateCatQPayload(raw: Record<string, unknown>): ModulePayloadValidation {
+  const keys = Object.keys(raw);
+  if (keys.length > MODULE_PAYLOAD_LIMITS.catQ.maxKeys) {
+    return { ok: false, error: "Too many CAT-Q answer fields" };
+  }
+
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!CAT_Q_KNOWN_IDS.has(key)) {
+      return { ok: false, error: `Unknown CAT-Q item: ${key}` };
+    }
+    if (value === undefined || value === null) continue;
+
+    let normalized: unknown = value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const asNumber = Number(value);
+      if (Number.isInteger(asNumber)) normalized = asNumber;
+    }
+
+    if (!isValidCatQLikert(normalized)) {
+      return {
+        ok: false,
+        error: `CAT-Q responses must be integers from 1 to 7 (invalid value for ${key})`,
+      };
+    }
+    data[key] = normalized;
+  }
+  return { ok: true, data };
 }
 
 function validateScreenerPayload(raw: Record<string, unknown>): ModulePayloadValidation {

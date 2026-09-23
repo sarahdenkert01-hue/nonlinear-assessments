@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
+import { CatQResults, type CatQAnswers } from "@/features/cat-q";
 import {
   GUIDED_REFLECTION_SECTIONS,
   MODULE_KEYS,
@@ -18,6 +19,22 @@ const STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "Submitted",
   COMPLETED: "Completed",
 };
+
+function parseCatQAnswers(data: unknown): CatQAnswers {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return {};
+  const answers: CatQAnswers = {};
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 7) {
+      answers[key] = value as CatQAnswers[string];
+    } else if (typeof value === "string" && value.trim() !== "") {
+      const n = Number(value);
+      if (Number.isInteger(n) && n >= 1 && n <= 7) {
+        answers[key] = n as CatQAnswers[string];
+      }
+    }
+  }
+  return answers;
+}
 
 export default async function ClinicianModuleReviewPage({ params }: PageProps) {
   const { userId } = await auth();
@@ -41,18 +58,20 @@ export default async function ClinicianModuleReviewPage({ params }: PageProps) {
           ← Episode overview
         </Link>
 
-        <header className="mt-4">
-          <h1 className="ui-page-title">{mod.title}</h1>
-          <p className="ui-page-lead mt-1">
-            {STATUS_LABELS[mod.status] ?? mod.status}
-            {mod.submittedAt
-              ? ` · Submitted ${new Date(mod.submittedAt).toLocaleString()}`
-              : ""}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Client-reported content — not verified clinical conclusions.
-          </p>
-        </header>
+        {moduleKey !== MODULE_KEYS.CAT_Q && (
+          <header className="mt-4">
+            <h1 className="ui-page-title">{mod.title}</h1>
+            <p className="ui-page-lead mt-1">
+              {STATUS_LABELS[mod.status] ?? mod.status}
+              {mod.submittedAt
+                ? ` · Submitted ${new Date(mod.submittedAt).toLocaleString()}`
+                : ""}
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Client-reported content — not verified clinical conclusions.
+            </p>
+          </header>
+        )}
 
         {moduleKey === MODULE_KEYS.SCREENER && (
           <section className="mt-8">
@@ -81,6 +100,27 @@ export default async function ClinicianModuleReviewPage({ params }: PageProps) {
 
         {moduleKey === MODULE_KEYS.GUIDED_REFLECTION && (
           <ReflectionReview data={mod.data} />
+        )}
+
+        {moduleKey === MODULE_KEYS.CAT_Q && (
+          <div className="mt-4">
+            {mod.status === "SUBMITTED" || mod.status === "COMPLETED" ? (
+              <CatQResults
+                answers={parseCatQAnswers(mod.data)}
+                submittedAt={mod.submittedAt}
+              />
+            ) : (
+              <section className="mt-8">
+                <h1 className="ui-page-title">{mod.title}</h1>
+                <p className="mt-4 text-sm text-amber-700">
+                  CAT-Q has not been submitted yet ({STATUS_LABELS[mod.status] ?? mod.status}).
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Scores and response details appear here after the client submits.
+                </p>
+              </section>
+            )}
+          </div>
         )}
       </main>
     </div>

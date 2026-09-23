@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  ASSIGNMENT_PACKAGES,
+  type AssignmentPackageId,
+} from "@/lib/modules";
 
 interface ClientOption {
   id: string;
@@ -13,6 +17,7 @@ export function IntakeLinkCreator() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
   const [clientId, setClientId] = useState("");
+  const [packageId, setPackageId] = useState<AssignmentPackageId>("nonlinear");
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +44,7 @@ export function IntakeLinkCreator() {
         body: JSON.stringify({
           clientName: clientId ? undefined : clientName.trim() || undefined,
           clientId: clientId || undefined,
+          packageId,
         }),
       });
       if (res.status === 401) {
@@ -92,6 +98,41 @@ export function IntakeLinkCreator() {
           />
         </div>
       )}
+
+      <fieldset className="mt-4">
+        <legend className="ui-label">Assign</legend>
+        <div className="mt-2 space-y-2">
+          {ASSIGNMENT_PACKAGES.map((pkg) => (
+            <label
+              key={pkg.id}
+              className={`flex cursor-pointer gap-3 rounded-md border px-3 py-3 ${
+                packageId === pkg.id
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                  : "border-[var(--border)]"
+              }`}
+            >
+              <input
+                type="radio"
+                name="assignment-package"
+                value={pkg.id}
+                checked={packageId === pkg.id}
+                onChange={() => setPackageId(pkg.id)}
+                className="mt-1"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-slate-900">
+                  {pkg.title}
+                </span>
+                <span className="mt-0.5 block text-sm text-slate-600">
+                  {pkg.description}
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">{pkg.detail}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       <button
         type="button"
         onClick={handleCreate}

@@ -87,7 +87,7 @@ export async function POST(request: Request, context: RouteContext) {
       return jsonError(result.message, 404);
     }
 
-    if (moduleKey === MODULE_KEYS.SCREENER) {
+    if (moduleKey === MODULE_KEYS.SCREENER || moduleKey === MODULE_KEYS.CAT_Q) {
       const session = await getSessionByToken(token);
       if (session) await notifyClinicianOnSubmission(session);
     }

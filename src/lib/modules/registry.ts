@@ -6,12 +6,15 @@
 export type ModuleRenderer =
   | "assessment-form"
   | "developmental-life-map"
-  | "guided-reflection";
+  | "guided-reflection"
+  | "cat-q-form";
 
 export interface ModuleDefinition {
   moduleKey: string;
   moduleVersion: string;
   title: string;
+  /** Compact label for tight UI. Falls back to title when omitted. */
+  shortTitle?: string;
   description: string;
   renderer: ModuleRenderer;
   displayOrder: number;
@@ -23,6 +26,7 @@ export const MODULE_KEYS = {
   SCREENER: "nonlinear-screener",
   LIFE_MAP: "developmental-life-map",
   GUIDED_REFLECTION: "guided-reflection",
+  CAT_Q: "cat-q",
 } as const;
 
 export type KnownModuleKey = (typeof MODULE_KEYS)[keyof typeof MODULE_KEYS];
@@ -32,6 +36,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     moduleKey: MODULE_KEYS.SCREENER,
     moduleVersion: "1",
     title: "Initial Assessment",
+    shortTitle: "Screener",
     description:
       "A structured screener that helps us understand patterns in attention, sensory experience, emotion, and daily life.",
     renderer: "assessment-form",
@@ -43,6 +48,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     moduleKey: MODULE_KEYS.LIFE_MAP,
     moduleVersion: "1",
     title: "Developmental Life Map",
+    shortTitle: "Life Map",
     description:
       "A timeline of meaningful periods in your life — what was happening, what helped, and what was hard.",
     renderer: "developmental-life-map",
@@ -54,11 +60,24 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     moduleKey: MODULE_KEYS.GUIDED_REFLECTION,
     moduleVersion: "1",
     title: "Guided Reflection",
+    shortTitle: "Reflection",
     description:
       "Open-ended prompts to share patterns, adaptations, and what you hope this assessment helps clarify.",
     renderer: "guided-reflection",
     displayOrder: 3,
     estimatedMinutes: 15,
+    required: true,
+  },
+  {
+    moduleKey: MODULE_KEYS.CAT_Q,
+    moduleVersion: "1",
+    title: "Camouflaging Autistic Traits Questionnaire (CAT-Q)",
+    shortTitle: "CAT-Q",
+    description:
+      "A 25-item self-report measure examining social camouflaging strategies across Compensation, Masking, and Assimilation.",
+    renderer: "cat-q-form",
+    displayOrder: 10,
+    estimatedMinutes: 10,
     required: true,
   },
 ];
@@ -67,8 +86,17 @@ export function getModuleDefinition(moduleKey: string): ModuleDefinition | undef
   return MODULE_REGISTRY.find((m) => m.moduleKey === moduleKey);
 }
 
+/**
+ * Default Nonlinear assessment package (screener + explorations).
+ * Does NOT include optional structured measures such as CAT-Q.
+ */
 export function getDefaultClientModules(): ModuleDefinition[] {
-  return [...MODULE_REGISTRY].sort((a, b) => a.displayOrder - b.displayOrder);
+  return MODULE_REGISTRY.filter(
+    (m) =>
+      m.moduleKey === MODULE_KEYS.SCREENER ||
+      m.moduleKey === MODULE_KEYS.LIFE_MAP ||
+      m.moduleKey === MODULE_KEYS.GUIDED_REFLECTION,
+  ).sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
 export function isKnownModuleKey(moduleKey: string): moduleKey is KnownModuleKey {

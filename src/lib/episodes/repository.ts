@@ -1,12 +1,23 @@
 import type { Prisma } from "@prisma/client";
 import type { AssessmentAnswers, ClinicianOverrides } from "@/features/assessments";
+import {
+  CAT_Q_ITEMS,
+  missingRequiredCatQItemIds,
+} from "@/features/cat-q";
 import { logSessionEvent } from "@/lib/audit";
 import {
   MODULE_KEYS,
   assertKnownModuleKey,
+  filterModuleKeysToAdd,
   getDefaultClientModules,
   getModuleDefinition,
+  getModulesForPackage,
+  isAssignmentPackageId,
+  isModuleRequiredForEpisode,
+  resolveTokenBearerModuleKey,
+  shouldUnlockEpisodeOnModuleSubmit,
   validateModulePayload,
+  type AssignmentPackageId,
   type ClientAssessmentEpisode,
   type ClientModuleRecord,
 } from "@/lib/modules";
@@ -95,7 +106,7 @@ function parseOverrides(value: Prisma.JsonValue | null): ClinicianOverrides | nu
   return null;
 }
 
-/** Prefer the screener for legacy flat EpisodeRecord; fall back to first CLIENT module. */
+/** Prefer the screener for legacy flat EpisodeRecord; fall back to token-bearing / first CLIENT module. */
 function screenerModule(row: EpisodeRow): ModuleRow | null {
   return (
     row.modules.find((m) => m.moduleKey === SCREENER.key) ??
@@ -111,11 +122,7 @@ function tokenBearingModule(row: EpisodeRow, token?: string): ModuleRow | null {
   if (token) {
     return row.modules.find((m) => m.token === token) ?? null;
   }
-  return (
-    row.modules.find((m) => m.moduleKey === SCREENER.key && m.token) ??
-    row.modules.find((m) => m.audience === "CLIENT" && m.token) ??
-    null
-  );
+  return row.modules.find((m) => m.audience === "CLIENT" && m.token) ?? null;
 }
 
 function clientModules(row: EpisodeRow): ModuleRow[] {
@@ -151,7 +158,10 @@ function toRecord(row: EpisodeRow): EpisodeRecord {
   };
 }
 
-function moduleToClientRecord(m: ModuleRow): ClientModuleRecord {
+function moduleToClientRecord(
+  m: ModuleRow,
+  assignedModuleKeys: string[],
+): ClientModuleRecord {
   const def = getModuleDefinition(m.moduleKey);
   const isScreener = m.moduleKey === SCREENER.key;
   const data = isScreener
@@ -165,7 +175,7 @@ function moduleToClientRecord(m: ModuleRow): ClientModuleRecord {
     title: def?.title ?? m.moduleKey,
     description: def?.description ?? "",
     estimatedMinutes: def?.estimatedMinutes ?? 15,
-    required: def?.required ?? true,
+    required: isModuleRequiredForEpisode(m.moduleKey, assignedModuleKeys),
     status: m.status,
     data,
     submittedAt: toIso(m.submittedAt),
@@ -174,10 +184,19 @@ function moduleToClientRecord(m: ModuleRow): ClientModuleRecord {
   };
 }
 
+function assignedClientModuleKeys(row: EpisodeRow): string[] {
+  return clientModules(row).map((m) => m.moduleKey);
+}
+
+function clientRecordFromRow(row: EpisodeRow, mod: ModuleRow): ClientModuleRecord {
+  return moduleToClientRecord(mod, assignedClientModuleKeys(row));
+}
+
 function toClientEpisode(row: EpisodeRow, token: string): ClientAssessmentEpisode {
   const tokenMod = tokenBearingModule(row, token) ?? screenerModule(row);
+  const keys = assignedClientModuleKeys(row);
   const modules = clientModules(row)
-    .map(moduleToClientRecord)
+    .map((m) => moduleToClientRecord(m, keys))
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
   const required = modules.filter((m) => m.required);
@@ -354,7 +373,13 @@ export async function createSession(input: CreateSessionInput): Promise<EpisodeR
     if (client) clientName = client.displayName;
   }
 
-  const defaults = getDefaultClientModules();
+  const packageId: AssignmentPackageId = isAssignmentPackageId(input.packageId)
+    ? input.packageId
+    : "nonlinear";
+  const modulesToCreate = getModulesForPackage(packageId);
+  const tokenBearerKey = resolveTokenBearerModuleKey(
+    modulesToCreate.map((d) => d.moduleKey),
+  );
   const intakeToken = generateIntakeToken();
 
   const row = await prisma.$transaction(async (tx) => {
@@ -366,8 +391,8 @@ export async function createSession(input: CreateSessionInput): Promise<EpisodeR
       },
     });
 
-    for (const def of defaults) {
-      const isScreener = def.moduleKey === SCREENER.key;
+    for (const def of modulesToCreate) {
+      const bearsToken = def.moduleKey === tokenBearerKey;
       await tx.moduleInstance.create({
         data: {
           episodeId: episode.id,
@@ -375,9 +400,7 @@ export async function createSession(input: CreateSessionInput): Promise<EpisodeR
           moduleVersion: def.moduleVersion,
           audience: "CLIENT",
           status: "NOT_STARTED",
-          ...(isScreener
-            ? { token: intakeToken, tokenExpiresAt }
-            : {}),
+          ...(bearsToken ? { token: intakeToken, tokenExpiresAt } : {}),
         },
       });
     }
@@ -395,7 +418,9 @@ export async function createSession(input: CreateSessionInput): Promise<EpisodeR
     metadata: {
       clientName: record.clientName,
       expiresAt: record.tokenExpiresAt,
-      modules: defaults.map((d) => d.moduleKey),
+      packageId,
+      modules: modulesToCreate.map((d) => d.moduleKey),
+      tokenBearerModuleKey: tokenBearerKey,
     },
   });
   return record;
@@ -409,18 +434,50 @@ export async function addExplorationModules(
   episodeId: string,
   clinicianId: string,
 ): Promise<ModuleSummary[] | null> {
+  const explorationKeys = getDefaultClientModules()
+    .map((d) => d.moduleKey)
+    .filter((key) => key !== SCREENER.key);
+  const result = await addModulesToEpisode(episodeId, clinicianId, explorationKeys);
+  if (!result) return null;
+  return result.modules ?? [];
+}
+
+export type AddModulesResult =
+  | { ok: true; modules: ModuleSummary[]; added: string[] }
+  | { ok: false; code: "not_found" | "nothing_to_add"; message: string; modules?: ModuleSummary[] };
+
+/**
+ * Add known client modules to an existing episode (e.g. CAT-Q).
+ * Skips keys already present — no duplicate ModuleInstances.
+ * Does not move the intake token; clients use the existing journey link.
+ */
+export async function addModulesToEpisode(
+  episodeId: string,
+  clinicianId: string,
+  moduleKeys: string[],
+): Promise<AddModulesResult | null> {
   const row = await prisma.assessmentEpisode.findFirst({
     where: { id: episodeId, clinicianId },
     include: episodeInclude,
   });
   if (!row) return null;
 
-  const existingKeys = new Set(row.modules.map((m) => m.moduleKey));
-  const toAdd = getDefaultClientModules().filter((d) => !existingKeys.has(d.moduleKey));
+  const existingKeys = row.modules.map((m) => m.moduleKey);
+  const toAdd = filterModuleKeysToAdd(existingKeys, moduleKeys);
 
-  for (const def of toAdd) {
-    // Never add a second screener token — only exploration modules.
-    if (def.moduleKey === SCREENER.key) continue;
+  if (toAdd.length === 0) {
+    const modules = (await listModulesForEpisode(episodeId, clinicianId)) ?? [];
+    return {
+      ok: false,
+      code: "nothing_to_add",
+      message: "Requested modules are already assigned or unknown.",
+      modules,
+    };
+  }
+
+  for (const key of toAdd) {
+    const def = getModuleDefinition(key);
+    if (!def) continue;
     await prisma.moduleInstance.create({
       data: {
         episodeId: row.id,
@@ -432,15 +489,14 @@ export async function addExplorationModules(
     });
   }
 
-  if (toAdd.length > 0) {
-    await logSessionEvent(row.id, "session.explorations_added", {
-      actorType: "clinician",
-      actorId: clinicianId,
-      metadata: { modules: toAdd.map((d) => d.moduleKey) },
-    });
-  }
+  await logSessionEvent(row.id, "session.modules_added", {
+    actorType: "clinician",
+    actorId: clinicianId,
+    metadata: { modules: toAdd },
+  });
 
-  return listModulesForEpisode(episodeId, clinicianId);
+  const modules = (await listModulesForEpisode(episodeId, clinicianId)) ?? [];
+  return { ok: true, modules, added: toAdd };
 }
 
 export async function listSessionsForClinician(
@@ -491,8 +547,9 @@ export async function getClientModulesForClinician(
     include: episodeInclude,
   });
   if (!row) return null;
+  const keys = assignedClientModuleKeys(row);
   return clientModules(row)
-    .map(moduleToClientRecord)
+    .map((m) => moduleToClientRecord(m, keys))
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
@@ -657,7 +714,7 @@ export async function updateModuleData(
         code: "conflict",
         message: "This module was updated in another tab. Reload to continue.",
         currentRevision: wrote.currentRevision,
-        module: refreshed ? moduleToClientRecord(refreshed.mod) : undefined,
+        module: refreshed ? clientRecordFromRow(refreshed.row, refreshed.mod) : undefined,
       };
     }
     return {
@@ -677,7 +734,7 @@ export async function updateModuleData(
 
   return {
     ok: true,
-    module: moduleToClientRecord(refreshed.mod),
+    module: clientRecordFromRow(refreshed.row, refreshed.mod),
     meta: {
       operation,
       moduleKey,
@@ -696,7 +753,7 @@ export async function getModuleByTokenAndKey(
 ): Promise<ClientModuleRecord | null> {
   const resolved = await resolveModuleForToken(token, moduleKey);
   if (!resolved) return null;
-  return moduleToClientRecord(resolved.mod);
+  return clientRecordFromRow(resolved.row, resolved.mod);
 }
 
 /**
@@ -751,7 +808,7 @@ export async function submitModule(
         message:
           "Please answer all scored questions before sharing with your clinician. Your saved answers were kept.",
         missingItemIds: missing,
-        module: moduleToClientRecord(mod),
+        module: clientRecordFromRow(row, mod),
       };
     }
 
@@ -782,7 +839,7 @@ export async function submitModule(
           code: "conflict",
           message: "This module was updated in another tab. Reload to continue.",
           currentRevision: wrote.currentRevision,
-          module: refreshed ? moduleToClientRecord(refreshed.mod) : undefined,
+          module: refreshed ? clientRecordFromRow(refreshed.row, refreshed.mod) : undefined,
         };
       }
       return {
@@ -822,7 +879,7 @@ export async function submitModule(
     }
     return {
       ok: true,
-      module: moduleToClientRecord(refreshed.mod),
+      module: clientRecordFromRow(refreshed.row, refreshed.mod),
       meta: {
         operation: "submit",
         moduleKey,
@@ -841,6 +898,20 @@ export async function submitModule(
   const validation = validateModulePayload(moduleKey, merged);
   if (!validation.ok) {
     return { ok: false, code: "validation", message: validation.error };
+  }
+
+  if (moduleKey === MODULE_KEYS.CAT_Q) {
+    const missing = missingRequiredCatQItemIds(validation.data, CAT_Q_ITEMS);
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        code: "incomplete",
+        message:
+          "Please answer all 25 CAT-Q items before sharing with your clinician. Your saved answers were kept.",
+        missingItemIds: missing,
+        module: clientRecordFromRow(row, mod),
+      };
+    }
   }
 
   const upsertSource = data && typeof data === "object" ? data : validation.data;
@@ -868,7 +939,7 @@ export async function submitModule(
         code: "conflict",
         message: "This module was updated in another tab. Reload to continue.",
         currentRevision: wrote.currentRevision,
-        module: refreshed ? moduleToClientRecord(refreshed.mod) : undefined,
+        module: refreshed ? clientRecordFromRow(refreshed.row, refreshed.mod) : undefined,
       };
     }
     return {
@@ -879,6 +950,17 @@ export async function submitModule(
           ? "Module already submitted or not editable"
           : "Module not found",
     };
+  }
+
+  const assignedKeys = row.modules.map((m) => m.moduleKey);
+  if (
+    row.status === "DRAFT" &&
+    shouldUnlockEpisodeOnModuleSubmit(moduleKey, assignedKeys)
+  ) {
+    await prisma.assessmentEpisode.update({
+      where: { id: row.id },
+      data: { status: "SUBMITTED", submittedAt: new Date() },
+    });
   }
 
   await logSessionEvent(row.id, "module.submitted", {
@@ -901,7 +983,7 @@ export async function submitModule(
   }
   return {
     ok: true,
-    module: moduleToClientRecord(refreshed.mod),
+    module: clientRecordFromRow(refreshed.row, refreshed.mod),
     meta: {
       operation: "submit",
       moduleKey,
@@ -980,11 +1062,11 @@ export async function revokeSessionToken(
     where: { id, clinicianId },
     include: episodeInclude,
   });
-  const clientMod = row ? screenerModule(row) : null;
-  if (!row || !clientMod) return null;
+  const tokenMod = row ? tokenBearingModule(row) : null;
+  if (!row || !tokenMod) return null;
 
   await prisma.moduleInstance.update({
-    where: { id: clientMod.id },
+    where: { id: tokenMod.id },
     data: { revokedAt: new Date() },
   });
   await logSessionEvent(row.id, "session.token_revoked", {
@@ -1003,14 +1085,14 @@ export async function extendSessionToken(
     where: { id, clinicianId },
     include: episodeInclude,
   });
-  const clientMod = row ? screenerModule(row) : null;
-  if (!row || !clientMod) return null;
+  const tokenMod = row ? tokenBearingModule(row) : null;
+  if (!row || !tokenMod) return null;
 
   const tokenExpiresAt = new Date();
   tokenExpiresAt.setDate(tokenExpiresAt.getDate() + days);
 
   await prisma.moduleInstance.update({
-    where: { id: clientMod.id },
+    where: { id: tokenMod.id },
     data: { tokenExpiresAt, revokedAt: null },
   });
   await logSessionEvent(row.id, "session.token_extended", {

@@ -47,19 +47,24 @@ export function AssessmentJourney({
   episode: ClientAssessmentEpisode;
   token: string;
 }) {
+  const hasScreener = episode.modules.some((m) => m.moduleKey === MODULE_KEYS.SCREENER);
   const screener = episode.modules.find((m) => m.moduleKey === MODULE_KEYS.SCREENER);
   const screenerSubmitted = screener ? isSubmitted(screener.status) : false;
   const clinicianReviewed = episode.status === "REVIEWED";
   const remainingCount = episode.modules.filter((m) => m.required && !isSubmitted(m.status))
     .length;
+  const isSingleModule = episode.modules.length === 1;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <header className="mb-8">
-        <h1 className="ui-page-title">Your Assessment Journey</h1>
+        <h1 className="ui-page-title">
+          {isSingleModule ? episode.modules[0]?.title ?? "Your assessment" : "Your Assessment Journey"}
+        </h1>
         <p className="ui-page-lead mt-2">
-          These activities help us understand your experiences from several different
-          perspectives. You can pause and return using the same secure link.
+          {isSingleModule
+            ? "You can pause and return using the same secure link. Your answers are saved as you go."
+            : "These activities help us understand your experiences from several different perspectives. You can pause and return using the same secure link."}
         </p>
         {episode.clientName && (
           <p className="mt-3 text-sm text-[var(--muted)]">Prepared for {episode.clientName}</p>
@@ -79,10 +84,10 @@ export function AssessmentJourney({
           className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
           role="status"
         >
-          You have completed all of the activities in this journey. Thank you for sharing —
-          your clinician can review each activity when they are ready.
+          You have completed {isSingleModule ? "this assessment" : "all of the activities in this journey"}.
+          Thank you for sharing — your clinician can review when they are ready.
         </p>
-      ) : screenerSubmitted ? (
+      ) : hasScreener && screenerSubmitted ? (
         <p
           className="mb-6 rounded-md border border-[var(--border)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--accent-foreground)]"
           role="status"
@@ -90,6 +95,13 @@ export function AssessmentJourney({
           Your initial assessment has been submitted. Continue with the remaining activities
           below whenever you are ready
           {remainingCount > 0 ? ` (${remainingCount} still open)` : ""}.
+        </p>
+      ) : remainingCount > 0 && !isSingleModule ? (
+        <p
+          className="mb-6 rounded-md border border-[var(--border)] bg-slate-50 px-4 py-3 text-sm text-slate-700"
+          role="status"
+        >
+          {remainingCount} activit{remainingCount === 1 ? "y" : "ies"} still to complete.
         </p>
       ) : null}
 

@@ -9,6 +9,7 @@ import {
   reflectionKey,
 } from "@/features/assessments/lib/reflections";
 import { buildSections } from "@/features/assessments/lib/scoring";
+import { CAT_Q_ITEMS, CAT_Q_LIKERT_OPTIONS } from "@/features/cat-q";
 import {
   GUIDED_REFLECTION_SECTIONS,
   MODULE_KEYS,
@@ -172,6 +173,26 @@ function buildLifeMapItems(data: Record<string, unknown>): ResponseReviewItem[] 
   return items;
 }
 
+function buildCatQItems(data: Record<string, unknown>): ResponseReviewItem[] {
+  return CAT_Q_ITEMS.map((item) => {
+    const raw = data[item.id];
+    let answer = "";
+    if (typeof raw === "number" && Number.isInteger(raw)) {
+      const opt = CAT_Q_LIKERT_OPTIONS.find((o) => o.value === raw);
+      answer = opt ? `${opt.value} — ${opt.label}` : String(raw);
+    } else if (raw !== undefined && raw !== null) {
+      answer = displayAnswer(raw).trim();
+    }
+    return {
+      itemId: item.id,
+      prompt: item.text,
+      answer,
+      unanswered: !answer,
+      multiline: false,
+    };
+  });
+}
+
 export function buildEpisodeResponseReview(
   episodeId: string,
   modules: ModuleRow[],
@@ -194,6 +215,8 @@ export function buildEpisodeResponseReview(
       items = buildGuidedReflectionItems(responsesToModuleData(m.responses));
     } else if (m.moduleKey === MODULE_KEYS.LIFE_MAP) {
       items = buildLifeMapItems(responsesToModuleData(m.responses));
+    } else if (m.moduleKey === MODULE_KEYS.CAT_Q) {
+      items = buildCatQItems(responsesToModuleData(m.responses));
     } else {
       const data = responsesToModuleData(m.responses);
       items = Object.entries(data).map(([itemId, value]) => {

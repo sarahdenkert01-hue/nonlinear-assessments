@@ -17,12 +17,14 @@ import {
   MODULE_KEYS,
   buildExplorationReportContext,
   getDefaultClientModules,
+  getModuleDefinition,
 } from "@/lib/modules";
 import {
   countConfirmedFindings,
   listDomainSummariesForEpisode,
 } from "@/lib/domains";
 import { AddExplorationsButton } from "./add-explorations-button";
+import { AddModuleButton } from "./add-module-button";
 import { ReopenModuleButton } from "./reopen-module-button";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -56,11 +58,21 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
     (key) =>
       key !== MODULE_KEYS.SCREENER && !modules.some((m) => m.moduleKey === key),
   );
+  const hasScreener = modules.some((m) => m.moduleKey === MODULE_KEYS.SCREENER);
+  const hasCatQ = modules.some((m) => m.moduleKey === MODULE_KEYS.CAT_Q);
+  const catQDef = getModuleDefinition(MODULE_KEYS.CAT_Q);
+  const catQModule = modules.find((m) => m.moduleKey === MODULE_KEYS.CAT_Q);
+  const catQSubmitted =
+    catQModule?.status === "SUBMITTED" || catQModule?.status === "COMPLETED";
 
   const confirmedFindingCount =
-    episode.status !== "DRAFT" ? await countConfirmedFindings(id) : 0;
+    hasScreener && episode.status !== "DRAFT"
+      ? await countConfirmedFindings(id)
+      : 0;
   const domainSummaries =
-    episode.status !== "DRAFT" ? await listDomainSummariesForEpisode(id) : [];
+    hasScreener && episode.status !== "DRAFT"
+      ? await listDomainSummariesForEpisode(id)
+      : [];
   const domainsWithEvidence = domainSummaries.filter((d) => d.hasConfirmedFindings).length;
   const domainsReviewed = domainSummaries.filter((d) => d.reviewedAt).length;
 
@@ -141,7 +153,26 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
               </tbody>
             </table>
           </div>
-          {missingExplorations && (
+
+          {!hasCatQ && (
+            <div className="mt-4 rounded-md border border-[var(--border)] bg-slate-50 px-4 py-3">
+              <p className="text-sm text-slate-800">
+                Optionally assign the Camouflaging Autistic Traits Questionnaire (CAT-Q)
+                as a supplemental measure. The client can complete it using the existing
+                intake link. Adding CAT-Q does not change completion of the Nonlinear
+                assessment package.
+              </p>
+              <div className="mt-3">
+                <AddModuleButton
+                  episodeId={episode.id}
+                  moduleKey={MODULE_KEYS.CAT_Q}
+                  label={`Add ${catQDef?.shortTitle ?? "CAT-Q"}`}
+                />
+              </div>
+            </div>
+          )}
+
+          {missingExplorations && hasScreener && (
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-sm text-amber-900">
                 This episode was created before the multi-module journey. Only existing
@@ -165,12 +196,34 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
         <section className="mt-8">
           <h2 className="ui-section-title">Review workflow</h2>
           <ul className="mt-4 space-y-2">
-            {(episode.status !== "DRAFT" || screenerSubmitted) && (
+            {hasCatQ && (
+              <li className="ui-card px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-900">CAT-Q results</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {catQSubmitted
+                        ? "View total and subscale scores from the submitted CAT-Q."
+                        : "Available after the client submits CAT-Q."}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/cases/${episode.id}/modules/${MODULE_KEYS.CAT_Q}`}
+                    className={`ui-btn px-3 py-1.5 text-xs${
+                      catQSubmitted ? " ui-btn-primary" : " ui-btn-ghost"
+                    }`}
+                  >
+                    {catQSubmitted ? "View CAT-Q" : "Open CAT-Q"}
+                  </Link>
+                </div>
+              </li>
+            )}
+            {hasScreener && (episode.status !== "DRAFT" || screenerSubmitted) && (
               <>
                 <li className="ui-card px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-slate-900">1. Finding review</p>
+                      <p className="font-medium text-slate-900">Finding review</p>
                       <p className="mt-1 text-xs text-slate-500">
                         Confirm or exclude theme-level findings from the screener.
                       </p>
@@ -186,7 +239,7 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
                 <li className="ui-card px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-slate-900">2. Domain review</p>
+                      <p className="font-medium text-slate-900">Domain review</p>
                       <p className="mt-1 text-xs text-slate-500">
                         {confirmedFindingCount > 0
                           ? `${confirmedFindingCount} confirmed finding${confirmedFindingCount === 1 ? "" : "s"} · ${domainsWithEvidence} domain${domainsWithEvidence === 1 ? "" : "s"} with evidence · ${domainsReviewed} reviewed`
@@ -203,10 +256,20 @@ export default async function EpisodeOverviewPage({ params }: PageProps) {
                 </li>
               </>
             )}
-            {episode.status === "DRAFT" && !screenerSubmitted && (
+            {hasScreener && episode.status === "DRAFT" && !screenerSubmitted && (
               <li className="ui-card px-4 py-4 text-sm text-slate-600">
-                Clinical review unlocks after the client submits the initial assessment.
-                Exploration modules can still be reviewed individually as they arrive.
+                Nonlinear clinical review unlocks after the client submits the initial
+                assessment. Other modules can still be reviewed individually as they arrive.
+              </li>
+            )}
+            {!hasScreener && !hasCatQ && (
+              <li className="ui-card px-4 py-4 text-sm text-slate-600">
+                No reviewable modules yet.
+              </li>
+            )}
+            {!hasScreener && hasCatQ && episode.status === "DRAFT" && !catQSubmitted && (
+              <li className="ui-card px-4 py-4 text-sm text-slate-600">
+                CAT-Q results unlock after the client submits this measure.
               </li>
             )}
           </ul>

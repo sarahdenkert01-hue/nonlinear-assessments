@@ -23,6 +23,7 @@ export type {
   ResponseReviewItem,
 } from "./response-review";
 export type { ModuleWriteMeta, ModuleWriteOptions, ModuleWriteResult } from "./repository";
+export type { AddModulesResult } from "./repository";
 export {
   missingRequiredScreenerItems,
   mergeAnswerMaps,
@@ -35,6 +36,7 @@ export {
 export {
   acceptSessionConsent,
   addExplorationModules,
+  addModulesToEpisode,
   createClient,
   createSession,
   extendSessionToken,
